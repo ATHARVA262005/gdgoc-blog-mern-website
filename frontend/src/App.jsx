@@ -17,6 +17,7 @@ import Onboarding from './pages/Authentication/Onboarding';
 import Dashboard from './pages/Admin/Dashboard';
 import NewBlog from './pages/Admin/NewBlog';
 import EditBlog from './pages/Admin/EditBlog';
+import ErrorPage from './pages/ErrorPage'
 
 // Protected Route Component
 const AdminRoute = ({ children }) => {
@@ -86,6 +87,8 @@ const AppLayout = () => {
               </AdminRoute>
             } 
           />
+          {/* Add this catch-all route at the end */}
+          <Route path="*" element={<ErrorPage/>} />
         </Routes>
       </main>
     </div>
