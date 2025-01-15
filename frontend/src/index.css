@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Quill Editor Styles */
+.quill {
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+}
+
+.ql-container {
+  flex: 1;
+  overflow: auto;
+}
+
+.ql-editor {
+  min-height: 300px;
+  font-family: 'GoogleSansDisplay-Regular', sans-serif;
+}
+
+.ql-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: white;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+/* Fix toolbar button active states */
+.ql-toolbar button:hover,
+.ql-toolbar button.ql-active {
+  color: #2563eb !important;
+}
+
+.ql-toolbar button:hover .ql-stroke,
+.ql-toolbar button.ql-active .ql-stroke {
+  stroke: #2563eb !important;
+}
+
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar button.ql-active .ql-fill {
+  fill: #2563eb !important;
+}
+
+/* Updated Quill Editor Font Styles */
+.ql-snow .ql-picker.ql-font .ql-picker-label::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item::before {
+  content: attr(data-value) !important;
+}
+
+.ql-font-GoogleSansDisplay-Regular {
+  font-family: 'GoogleSansDisplay-Regular', sans-serif !important;
+}
+
+.ql-font-GoogleSansDisplay-Bold {
+  font-family: 'GoogleSansDisplay-Bold', sans-serif !important;
+}
+
+.ql-font-Roboto {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+.ql-font-Inter {
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Update font picker labels */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="GoogleSansDisplay-Regular"]::before {
+  content: 'Google Sans';
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="GoogleSansDisplay-Regular"]::before {
+  content: 'Google Sans';
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="GoogleSansDisplay-Bold"]::before {
+  content: 'Google Sans Bold';
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="GoogleSansDisplay-Bold"]::before {
+  content: 'Google Sans Bold';
+}
+
+/* Make font selector wider to accommodate long font names */
+.ql-snow .ql-picker.ql-font {
+  width: 200px !important;
+}
+
+.ql-snow .ql-picker-label {
+  padding: 4px 8px !important;
+}
+
+.ql-snow .ql-picker-options {
+  min-width: 200px !important;
+}
+
+.ql-snow .ql-picker-item {
+  padding: 5px 8px !important;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="GoogleSansDisplay-Regular"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="GoogleSansDisplay-Regular"]::before {
+  content: 'Google Sans';
+  font-family: 'GoogleSansDisplay-Regular', sans-serif;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="GoogleSansDisplay-Bold"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="GoogleSansDisplay-Bold"]::before {
+  content: 'Google Sans Bold';
+  font-family: 'GoogleSansDisplay-Bold', sans-serif;
+}

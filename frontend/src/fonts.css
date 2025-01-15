@@ -1,0 +1,21 @@
+/* Import fonts with proper paths and multiple formats for better browser support */
+@font-face {
+  font-family: 'GoogleSansDisplay-Regular';
+  src: url('./assets/fonts/GoogleSansDisplay-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'GoogleSansDisplay-Bold';
+  src: url('./assets/fonts/GoogleSansDisplay-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Add fallback fonts */
+* {
+  font-feature-settings: 'liga' 1, 'ss01' 1;
+}
