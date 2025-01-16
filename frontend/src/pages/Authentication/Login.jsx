@@ -1,18 +1,71 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { login } from '../../services/authService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
+  const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt:', formData);
+    setError('');
+    
+    if (!validateForm()) return;
+    
+    setLoading(true);
+
+    try {
+      const response = await login(formData.email, formData.password);
+      
+      // Use auth context instead of localStorage
+      authLogin(response.user, response.token);
+      
+      if (response.requiresVerification) {
+        navigate('/verify-email', { state: { email: formData.email } });
+        return;
+      }
+      
+      if (!response.user.onboarded) {
+        navigate('/onboarding');
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      if (err.message === 'Email is not registered') {
+        setError('No account found with this email');
+      } else if (err.message === 'Incorrect password') {
+        setError('Invalid password');
+      } else {
+        setError(err.message || 'Failed to login');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -100,13 +153,20 @@ const Login = () => {
               </div>
             </div>
 
-            <div>
+            <div className="space-y-4">
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                disabled={loading}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Sign in
+                {loading ? 'Signing in...' : 'Sign in'}
               </button>
+
+              {error && (
+                <p className="text-center text-sm text-red-600">
+                  {error}
+                </p>
+              )}
             </div>
           </form>
         </div>

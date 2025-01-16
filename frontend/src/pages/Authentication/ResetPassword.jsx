@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff } from 'lucide-react';
+import { resetPassword } from '../../services/authService';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
 
 const ResetPassword = () => {
-  const { token } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email;
+  const message = location.state?.message;
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: ''
@@ -15,27 +19,43 @@ const ResetPassword = () => {
     confirm: false
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const inputRefs = useRef([]);
+
+  useEffect(() => {
+    if (!email) {
+      navigate('/forgot-password');
+    }
+    inputRefs.current[0]?.focus();
+  }, [email, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
+    const otpString = otp.join('');
+    if (otpString.length !== 6) {
+      setError('Please enter the complete verification code');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
     try {
-      // Here you would make an API call to reset the password
-      console.log('Resetting password with token:', token);
-      console.log('New password:', formData.password);
-      
-      // On success, redirect to login
-      navigate('/login', { 
-        state: { message: 'Password has been reset successfully. Please login with your new password.' }
+      await resetPassword(email, otpString, formData.password);
+      navigate('/login', {
+        state: { message: 'Password reset successful. Please login with your new password.' }
       });
     } catch (err) {
-      setError('Failed to reset password. Please try again.');
+      setError(err.message || 'Failed to reset password');
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,6 +63,9 @@ const ResetPassword = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="text-center text-3xl font-bold text-gray-900">Reset your password</h2>
+        {message && (
+          <p className="mt-2 text-center text-gray-600">{message}</p>
+        )}
         <p className="mt-2 text-center text-gray-600">
           Please enter your new password below
         </p>
@@ -57,6 +80,33 @@ const ResetPassword = () => {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* OTP Fields */}
+            <div>
+              <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
+                Verification Code
+              </label>
+              <div className="mt-1 flex space-x-2">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    maxLength="1"
+                    className="w-12 h-12 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={digit}
+                    onChange={(e) => {
+                      const newOtp = [...otp];
+                      newOtp[index] = e.target.value;
+                      setOtp(newOtp);
+                      if (e.target.value && index < 5) {
+                        inputRefs.current[index + 1]?.focus();
+                      }
+                    }}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                  />
+                ))}
+              </div>
+            </div>
+
             {/* New Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -124,8 +174,9 @@ const ResetPassword = () => {
               <button
                 type="submit"
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={loading}
               >
-                Reset Password
+                {loading ? 'Resetting...' : 'Reset Password'}
               </button>
             </div>
           </form>

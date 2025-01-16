@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Globe, Github, Linkedin, Twitter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { completeOnboarding } from '../../services/authService';
 
 const profileImages = [
   {
@@ -37,22 +38,89 @@ const profileImages = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Get user data from location state first, then localStorage
+  const userDataFromLocation = location.state?.userData;
+  const userDataFromStorage = localStorage.getItem('user');
+  
+  // Use either location state, localStorage, or default empty object
+  const userData = userDataFromLocation || (userDataFromStorage ? JSON.parse(userDataFromStorage) : {});
+
+  // Initialize form data with user data if available
   const [formData, setFormData] = useState({
-    name: '',
-    email: 'user@example.com', // This would come from signup data
-    bio: '',
-    github: '',
-    linkedin: '',
-    twitter: '',
-    website: ''
+    name: userData.name || '',
+    email: userData.email || '',
+    bio: userData.bio || '',
+    website: userData.socialLinks?.website || '',
+    github: userData.socialLinks?.github || '',
+    linkedin: userData.socialLinks?.linkedin || '',
+    twitter: userData.socialLinks?.twitter || ''
   });
 
-  const handleSubmit = (e) => {
+  // Redirect to login if no user data
+  useEffect(() => {
+    if (!userData.id) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    // If user is already onboarded, redirect to home
+    if (userData.onboarded) {
+      navigate('/', { replace: true });
+    }
+  }, [userData, navigate]);
+
+  // Form validation
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError('Name is required');
+      return false;
+    }
+    if (formData.name.trim().length < 2) {
+      setError('Name must be at least 2 characters long');
+      return false;
+    }
+    if (!formData.bio.trim()) {
+      setError('Please add a short bio');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Profile data:', { ...formData, profileImage: profileImages[currentImageIndex] });
-    // Handle profile creation here
-    navigate('/'); // Redirect to home after successful profile creation
+    setError('');
+    
+    if (!validateForm()) return;
+    
+    setLoading(true);
+
+    try {
+      await completeOnboarding({
+        userId: userData.id,
+        name: formData.name.trim(),
+        bio: formData.bio.trim(),
+        profileImage: profileImages[currentImageIndex],
+        socialLinks: {
+          website: formData.website.trim(),
+          github: formData.github.trim(),
+          linkedin: formData.linkedin.trim(),
+          twitter: formData.twitter.trim()
+        }
+      });
+
+      // Redirect to home page after successful onboarding
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('Onboarding error:', err);
+      setError(err.message || 'Failed to complete onboarding');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePrevImage = () => {
@@ -227,10 +295,16 @@ const Onboarding = () => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={loading}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Complete Profile
+                {loading ? 'Completing Profile...' : 'Complete Profile'}
               </button>
+              {error && (
+                <p className="mt-2 text-center text-sm text-red-600">
+                  {error}
+                </p>
+              )}
             </div>
           </form>
         </div>

@@ -1,14 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { verifyOTP, resendOTP } from '../../services/authService';
 
 const VerifyEmail = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resendDisabled, setResendDisabled] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const inputRefs = useRef([]);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email;
 
   useEffect(() => {
+    if (!email) {
+      navigate('/login');
+    }
     inputRefs.current[0]?.focus();
-  }, []);
+  }, [email, navigate]);
 
   const handleChange = (value, index) => {
     if (isNaN(value)) return;
@@ -30,23 +41,59 @@ const VerifyEmail = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const otpString = otp.join('');
-    console.log('Verifying OTP:', otpString);
-    // Handle verification logic here
+    if (otpString.length !== 6) {
+      setError('Please enter all 6 digits');
+      return;
+    }
+    
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await verifyOTP(email, otpString);
+      
+      // Store the user data before navigating
+      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('token', response.token);
+      
+      navigate('/onboarding', { 
+        state: { userData: response.user },
+        replace: true
+      });
+    } catch (err) {
+      setError(err.message || 'Verification failed');
+      setOtp(['', '', '', '', '', '']); // Clear OTP fields on error
+      inputRefs.current[0]?.focus(); // Focus first input
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
-    const newOtp = [...otp];
-    pastedData.forEach((value, index) => {
-      if (index < 6 && !isNaN(value)) {
-        newOtp[index] = value;
-      }
-    });
-    setOtp(newOtp);
+  const handleResendOTP = async () => {
+    if (resendDisabled) return;
+    
+    try {
+      setError('');
+      await resendOTP(email);
+      setResendDisabled(true);
+      setCountdown(60);
+      
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setResendDisabled(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err.message || 'Failed to resend code');
+    }
   };
 
   return (
@@ -54,7 +101,7 @@ const VerifyEmail = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="text-center text-3xl font-bold text-gray-900">Verify your email</h2>
         <p className="mt-2 text-center text-gray-600 text-lg">
-          We've sent a verification code to your email
+          We've sent a verification code to {email}
         </p>
       </div>
 
@@ -65,7 +112,7 @@ const VerifyEmail = () => {
               <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
                 Enter verification code
               </label>
-              <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+              <div className="flex gap-2 justify-center">
                 {otp.map((digit, index) => (
                   <input
                     key={index}
@@ -81,22 +128,30 @@ const VerifyEmail = () => {
               </div>
             </div>
 
+            {error && (
+              <p className="text-red-600 text-sm text-center">{error}</p>
+            )}
+
             <div>
               <button
                 type="submit"
-                disabled={otp.some(digit => !digit)}
+                disabled={loading || otp.some(digit => !digit)}
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Verify Email
+                {loading ? 'Verifying...' : 'Verify Email'}
               </button>
             </div>
 
             <div className="text-center">
               <button
                 type="button"
-                className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                onClick={handleResendOTP}
+                disabled={resendDisabled}
+                className="text-sm font-medium text-blue-600 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Didn't receive a code? Resend
+                {resendDisabled 
+                  ? `Resend code in ${countdown}s` 
+                  : "Didn't receive a code? Resend"}
               </button>
             </div>
           </form>

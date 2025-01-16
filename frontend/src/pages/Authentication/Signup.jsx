@@ -1,20 +1,79 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { register } from '../../services/authService';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    if (!formData.name || !formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      return false;
+    }
+
+    if (formData.name.length < 2) {
+      setError('Name must be at least 2 characters long');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle signup logic here
-    console.log('Signup attempt:', formData);
+    setError('');
+
+    if (!validateForm()) return;
+    
+    setLoading(true);
+
+    try {
+      console.log('Attempting registration...');
+      const response = await register(formData.name, formData.email, formData.password);
+      
+      if (response.requiresEmailVerification) {
+        console.warn('Email sending failed but account created');
+      }
+      
+      navigate('/verify-email', { 
+        state: { 
+          email: formData.email,
+          userData: response.user
+        }
+      });
+    } catch (err) {
+      console.error('Registration error:', err);
+      if (err.message === 'Email is already registered') {
+        setError('An account with this email already exists');
+      } else if (err.message.includes('Password must be')) {
+        setError(err.message);
+      } else {
+        setError(err.message || 'Failed to create account');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -108,9 +167,11 @@ const Signup = () => {
               <button
                 type="submit"
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                disabled={loading}
               >
-                Create account
+                {loading ? 'Creating account...' : 'Create account'}
               </button>
+              {error && <p className="mt-2 text-center text-sm text-red-600">{error}</p>}
             </div>
           </form>
         </div>
