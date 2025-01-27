@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const AuthContext = createContext();
 
@@ -11,39 +12,32 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for token in localStorage
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Verify token and fetch user data
-      verifyToken(token);
-    }
-    setLoading(false);
-  }, []);
-
-  const verifyToken = async (token) => {
-    try {
-      // Make API call to verify token and get user data
-      const response = await fetch('/api/verify-token', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        setIsAdmin(userData.isAdmin || false);
-        setIsAuthenticated(true);
-      } else {
-        // If token is invalid, clear everything
-        localStorage.removeItem('token');
-        setUser(null);
-        setIsAdmin(false);
-        setIsAuthenticated(false);
+    const verifyToken = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Token verification failed:', error);
-    }
-  };
+
+      try {
+        const response = await api.get('/auth/verify-token');
+        if (response.data.success) {
+          setUser(response.data.user);
+          setIsAdmin(response.data.isAdmin || false);
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem('token');
+        }
+      } catch (error) {
+        console.error('Token verification failed:', error);
+        localStorage.removeItem('token');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    verifyToken();
+  }, []);
 
   const adminLogin = () => {
     console.log('Setting admin status...');

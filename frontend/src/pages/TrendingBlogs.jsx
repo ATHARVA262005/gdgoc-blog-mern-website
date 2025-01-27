@@ -27,8 +27,7 @@ const TrendingBlogs = () => {
       if (response.data.success) {
         setTrendingBlogs(response.data.trendingBlogs);
         // Fetch like and bookmark statuses for all blogs
-        fetchLikeStatuses(response.data.trendingBlogs.map(blog => blog.id));
-        fetchBookmarkStatuses(response.data.trendingBlogs.map(blog => blog.id));
+        fetchBookmarkAndLikeStatuses(response.data.trendingBlogs);
       }
     } catch (err) {
       console.error('Error details:', err.response?.data || err.message);
@@ -38,25 +37,34 @@ const TrendingBlogs = () => {
     }
   };
 
-  const fetchLikeStatuses = async (blogIds) => {
-    try {
-      const response = await api.post('/api/blogs/likes-status', { blogIds });
-      if (response.data.success) {
-        setLikeStatuses(response.data.likeStatuses);
-      }
-    } catch (error) {
-      console.error('Error fetching like statuses:', error);
-    }
-  };
+  const fetchBookmarkAndLikeStatuses = async (blogs) => {
+    // Only fetch if user is logged in
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-  const fetchBookmarkStatuses = async (blogIds) => {
+    const blogIds = blogs.map(blog => blog.id);
+    
     try {
-      const response = await api.post('/api/blogs/bookmarks-status', { blogIds });
-      if (response.data.success) {
-        setBookmarkStatuses(response.data.bookmarkStatuses);
+      const [bookmarkResponse, likeResponse] = await Promise.all([
+        axios.post('/api/blogs/bookmarks-status', { blogIds }, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.post('/api/blogs/likes-status', { blogIds }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      if (bookmarkResponse.data.success) {
+        setBookmarkStatuses(bookmarkResponse.data.bookmarkStatuses);
       }
-    } catch (error) {
-      console.error('Error fetching bookmark statuses:', error);
+      if (likeResponse.data.success) {
+        setLikeStatuses(likeResponse.data.likeStatuses);
+      }
+    } catch (err) {
+      // Don't show error for unauthorized requests
+      if (err.response?.status !== 401) {
+        console.error('Error fetching statuses:', err);
+      }
     }
   };
 

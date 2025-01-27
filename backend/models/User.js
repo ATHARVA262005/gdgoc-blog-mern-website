@@ -61,7 +61,27 @@ const userSchema = new mongoose.Schema({
     content: String,
     createdAt: { type: Date, default: Date.now },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
-  }]
+  }],
+  preferences: {
+    categories: [{
+      type: String,
+      trim: true
+    }],
+    recentInteractions: [{
+      blog: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Blog'
+      },
+      interactionType: {
+        type: String,
+        enum: ['like', 'bookmark', 'comment', 'view']
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now
+      }
+    }]
+  }
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {
@@ -98,6 +118,30 @@ userSchema.methods.toJSON = function() {
     profileImage: obj.profileImage,
     socialLinks: obj.socialLinks
   };
+};
+
+// Add method to update user preferences
+userSchema.methods.updatePreferences = async function(blogId, interactionType) {
+  const blog = await mongoose.model('Blog').findById(blogId);
+  if (blog?.category) {
+    this.preferences.recentInteractions.push({
+      blog: blogId,
+      interactionType,
+      timestamp: new Date()
+    });
+
+    // Keep only last 20 interactions
+    if (this.preferences.recentInteractions.length > 20) {
+      this.preferences.recentInteractions.shift();
+    }
+
+    // Update preferred categories
+    if (!this.preferences.categories.includes(blog.category)) {
+      this.preferences.categories.push(blog.category);
+    }
+
+    await this.save();
+  }
 };
 
 module.exports = mongoose.model('User', userSchema);

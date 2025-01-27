@@ -9,6 +9,46 @@ const Admin = require('../models/Admin'); // Add this line
 const Comment = require('../models/Comment'); // Add this line
 const router = express.Router();
 
+// Add this new endpoint before other routes
+router.get('/featured', async (req, res) => {
+  try {
+    const featuredBlogs = await Blog.find({ 
+      status: 'published',
+      isFeatured: true 
+    })
+    .populate('author', 'username profileImage')
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .lean();
+
+    const formattedBlogs = featuredBlogs.map(blog => ({
+      _id: blog._id,
+      title: blog.title,
+      content: blog.content,
+      category: blog.category,
+      featuredImage: blog.featuredImage,
+      createdAt: blog.createdAt,
+      author: {
+        _id: blog.author?._id,
+        username: blog.author?.username || 'Anonymous',
+        profileImage: blog.author?.profileImage
+      },
+      stats: blog.stats || { likeCount: 0, commentCount: 0 }
+    }));
+
+    res.json({
+      success: true,
+      featuredBlogs: formattedBlogs
+    });
+  } catch (error) {
+    console.error('Error fetching featured blogs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching featured blogs'
+    });
+  }
+});
+
 // Get user's bookmarked blogs with full blog details
 router.get('/bookmarks', auth, async (req, res) => {
   try {
@@ -180,14 +220,34 @@ router.get('/trending', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const blogs = await Blog.find({ status: 'published' })
-      .populate('author', 'username')
-      .sort({ createdAt: -1 });
+      .populate('author', 'username profileImage')
+      .sort({ createdAt: -1 })
+      .limit(12) // Ensure we get enough blogs for both latest and recommended
+      .lean();
+
+    // Format the response
+    const formattedBlogs = blogs.map(blog => ({
+      _id: blog._id,
+      title: blog.title,
+      content: blog.content,
+      category: blog.category,
+      featuredImage: blog.featuredImage,
+      createdAt: blog.createdAt,
+      isFeatured: blog.isFeatured,
+      author: {
+        _id: blog.author?._id,
+        username: blog.author?.username || 'Anonymous',
+        profileImage: blog.author?.profileImage
+      },
+      stats: blog.stats || { likeCount: 0, commentCount: 0 }
+    }));
 
     res.json({
       success: true,
-      blogs
+      blogs: formattedBlogs
     });
   } catch (error) {
+    console.error('Error fetching blogs:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching blogs'

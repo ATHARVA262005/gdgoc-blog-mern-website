@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const User = require('../models/User.js');
 const { sendVerificationOTP, sendPasswordResetOTP } = require('../utils/emailService');
 const router = express.Router();
+const auth = require('../middleware/auth');
 
 // Generate OTP
 const generateOTP = () => {
@@ -295,6 +296,29 @@ router.post('/complete-onboarding', async (req, res) => {
   } catch (error) {
     console.error('Onboarding error:', error);
     res.status(500).json({ message: 'Server error during onboarding' });
+  }
+});
+
+// Add verify token endpoint
+router.get('/verify-token', auth, async (req, res) => {
+  try {
+    // The auth middleware already verified the token
+    // and attached the user info to req.user
+    res.json({
+      success: true,
+      user: {
+        id: req.user.userId,
+        email: req.user.email,
+        // Add other user fields as needed
+      },
+      isAdmin: req.user.isAdmin || false
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
   }
 });
 

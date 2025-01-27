@@ -1,66 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, ThumbsUp, MessageCircle, Bookmark, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const blogs = [
-  {
-    id: 1,
-    title: "Getting Started with React Hooks",
-    excerpt: "Learn how to use React Hooks to manage state and side effects in your functional components...",
-    author: "Sarah Johnson",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 15, 2025",
-    likes: 234,
-    comments: 45,
-    category: "Development",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 2,
-    title: "The Future of AI in 2025",
-    excerpt: "Exploring the latest trends and predictions in artificial intelligence and machine learning...",
-    author: "Michael Chen",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 14, 2025",
-    likes: 189,
-    comments: 32,
-    category: "Technology",
-    image: "https://placehold.co/600x400"
-  },
-  // Additional blog entries with similar structure
-].concat(Array.from({ length: 8 }, (_, i) => ({
-  id: i + 3,
-  title: `Sample Blog Post ${i + 3}`,
-  excerpt: "This is a sample blog post excerpt that demonstrates the layout and design of our blog cards...",
-  author: "John Doe",
-  authorImage: "https://placehold.co/100x100",
-  date: "Jan 13, 2025",
-  likes: Math.floor(Math.random() * 200) + 50,
-  comments: Math.floor(Math.random() * 50) + 10,
-  category: "General",
-  image: "https://placehold.co/600x400"
-})));
-
-const recommendedBlogs = blogs.slice(0, 3);
-const latestBlogs = blogs.slice(3, 9);
-const featuredPosts = blogs.slice(0, 3); // Get first 3 posts as featured
+import axios from 'axios';
+import BlogCard from '../components/BlogCard';
+import { blogApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const FeaturedPost = ({ post }) => (
   <div className="relative h-[500px] group cursor-pointer overflow-hidden rounded-xl">
     <img 
-      src={post.image} 
+      src={post.featuredImage || 'https://placehold.co/600x400'} 
       alt={post.title} 
       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
     />
     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black/80">
       <div className="absolute bottom-0 p-8">
-        <span className="text-sm font-medium px-3 py-1 rounded-full bg-blue-600 text-white">{post.category}</span>
+        <span className="text-sm font-medium px-3 py-1 rounded-full bg-blue-600 text-white">
+          {post.category}
+        </span>
         <h2 className="text-3xl font-bold text-white mt-4 mb-2">{post.title}</h2>
         <div className="flex items-center gap-4 text-white/80">
-          <img src={post.authorImage} alt={post.author} className="w-10 h-10 rounded-full" />
+          <img 
+            src={post.author?.profileImage || '/images/profile_administrator.webp'} 
+            alt={post.author?.username} 
+            className="w-10 h-10 rounded-full" 
+          />
           <div>
-            <p className="font-medium">{post.author}</p>
-            <p className="text-sm">{post.date}</p>
+            <p className="font-medium">{post.author?.username || 'Anonymous'}</p>
+            <p className="text-sm">
+              {new Date(post.createdAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })}
+            </p>
           </div>
         </div>
       </div>
@@ -68,40 +41,7 @@ const FeaturedPost = ({ post }) => (
   </div>
 );
 
-const BlogCard = ({ blog }) => (
-  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
-    <div className="relative h-48 overflow-hidden">
-      <img src={blog.image} alt={blog.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
-      <button className="absolute top-4 right-4 p-2 bg-white/30 backdrop-blur-sm rounded-full hover:bg-white/50 transition-colors">
-        <Bookmark size={20} className="text-white" />
-      </button>
-    </div>
-    <div className="p-6">
-      <div className="flex items-center gap-4 mb-4">
-        <img src={blog.authorImage} alt={blog.author} className="w-8 h-8 rounded-full" />
-        <div>
-          <p className="font-medium text-sm">{blog.author}</p>
-          <p className="text-xs text-gray-500">{blog.date}</p>
-        </div>
-      </div>
-      <h3 className="font-bold text-xl mb-2 line-clamp-2">{blog.title}</h3>
-      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{blog.excerpt}</p>
-      <div className="flex items-center justify-between text-sm text-gray-500">
-        <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600">{blog.category}</span>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <ThumbsUp size={16} />
-            <span>{blog.likes}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <MessageCircle size={16} />
-            <span>{blog.comments}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
+// Remove the old BlogCard component definition since we're now importing it
 
 const SidebarCard = ({ blog }) => (
   <div className="flex gap-4 mb-4">
@@ -113,10 +53,13 @@ const SidebarCard = ({ blog }) => (
   </div>
 );
 
-const SectionTitle = ({ title }) => (
+const SectionTitle = ({ title, onViewAll }) => (
   <div className="flex items-center justify-between mb-8">
     <h2 className="text-2xl font-bold">{title}</h2>
-    <button className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+    <button 
+      onClick={onViewAll}
+      className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+    >
       View All
     </button>
   </div>
@@ -155,26 +98,32 @@ const SearchBar = () => {
   );
 };
 
-const FeaturedCarousel = () => {
+const FeaturedCarousel = ({ posts }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    if (!posts || posts.length === 0) return;
+    
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => 
-        prevIndex === featuredPosts.length - 1 ? 0 : prevIndex + 1
+        prevIndex === posts.length - 1 ? 0 : prevIndex + 1
       );
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [posts]);
+
+  if (!posts || posts.length === 0) {
+    return null;
+  }
 
   return (
     <div className="relative group">
-      <FeaturedPost post={featuredPosts[currentIndex]} />
+      <FeaturedPost post={posts[currentIndex]} />
       
       {/* Carousel Indicators */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-        {featuredPosts.map((_, index) => (
+        {posts.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
@@ -185,16 +134,16 @@ const FeaturedCarousel = () => {
         ))}
       </div>
 
-      {/* Enhanced Previous/Next Buttons */}
+      {/* Navigation Buttons */}
       <button
-        onClick={() => setCurrentIndex(prev => prev === 0 ? featuredPosts.length - 1 : prev - 1)}
+        onClick={() => setCurrentIndex(prev => prev === 0 ? posts.length - 1 : prev - 1)}
         className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-all opacity-0 group-hover:opacity-100 border border-white/20"
         aria-label="Previous slide"
       >
         <ChevronLeft size={24} strokeWidth={2.5} />
       </button>
       <button
-        onClick={() => setCurrentIndex(prev => prev === featuredPosts.length - 1 ? 0 : prev + 1)}
+        onClick={() => setCurrentIndex(prev => prev === posts.length - 1 ? 0 : prev + 1)}
         className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-all opacity-0 group-hover:opacity-100 border border-white/20"
         aria-label="Next slide"
       >
@@ -205,32 +154,237 @@ const FeaturedCarousel = () => {
 };
 
 const Home = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [blogs, setBlogs] = useState([]);
+  const [featuredBlogs, setFeaturedBlogs] = useState([]);
+  const [trendingBlogs, setTrendingBlogs] = useState([]);
+  const [userPreferences, setUserPreferences] = useState(null);
+  const navigate = useNavigate();
+  const { user } = useAuth(); // Add this line to get auth status
+
+  // Add handlers for blog interactions
+  const handleBlogClick = (blogId) => {
+    navigate(`/blog/${blogId}`);
+  };
+
+  const handleLike = async (blogId, e) => {
+    e.stopPropagation(); // Prevent blog click event
+    try {
+      const response = await blogApi.toggleLike(blogId);
+      if (response.data.success) {
+        // Update the blogs state to reflect the new like status
+        setBlogs(prev => prev.map(blog => {
+          if (blog._id === blogId) {
+            return {
+              ...blog,
+              isLiked: response.data.isLiked,
+              stats: {
+                ...blog.stats,
+                likeCount: response.data.likeCount
+              }
+            };
+          }
+          return blog;
+        }));
+      }
+    } catch (err) {
+      console.error('Error toggling like:', err);
+    }
+  };
+
+  const handleBookmark = async (blogId, e) => {
+    e.stopPropagation(); // Prevent blog click event
+    try {
+      const response = await blogApi.toggleBookmark(blogId);
+      if (response.data.success) {
+        // Update the blogs state to reflect the new bookmark status
+        setBlogs(prev => prev.map(blog => {
+          if (blog._id === blogId) {
+            return {
+              ...blog,
+              isBookmarked: response.data.isBookmarked
+            };
+          }
+          return blog;
+        }));
+      }
+    } catch (err) {
+      console.error('Error toggling bookmark:', err);
+    }
+  };
+
+  const getLatestBlogs = (allBlogs) => {
+    // Simply get the 3 most recent blogs
+    return [...allBlogs]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 3);
+  };
+
+  const getRecommendedBlogs = (allBlogs) => {
+    // If user is not logged in, return trending posts
+    if (!user || !userPreferences) {
+      return [...allBlogs]
+        .sort((a, b) => {
+          const scoreA = (a.stats?.likeCount || 0) * 2 + (a.stats?.commentCount || 0) * 3;
+          const scoreB = (b.stats?.likeCount || 0) * 2 + (b.stats?.commentCount || 0) * 3;
+          return scoreB - scoreA;
+        })
+        .slice(0, 3);
+    }
+
+    // For logged in users, use personalized recommendations
+    return [...allBlogs]
+      .map(blog => {
+        let score = 0;
+        
+        // User's liked posts get highest weight
+        if (blog.isLiked) {
+          score += 5;
+        }
+
+        // Matching user's preferred categories
+        if (userPreferences?.preferredCategories?.includes(blog.category)) {
+          score += 3;
+        }
+
+        // Bookmarked posts
+        if (blog.isBookmarked) {
+          score += 2;
+        }
+
+        // Add some weight to trending metrics as fallback
+        score += (blog.stats?.likeCount || 0) * 0.1;
+        score += (blog.stats?.commentCount || 0) * 0.2;
+
+        return { ...blog, recommendationScore: score };
+      })
+      .sort((a, b) => b.recommendationScore - a.recommendationScore)
+      .slice(0, 3);
+  };
+
+  // Navigate to treasure page
+  const handleViewAll = () => {
+    navigate('/treasure');
+  };
+
+  const getRecommendationTitle = () => {
+    return user ? "Recommended For You" : "Trending Posts";
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const requests = [
+          axios.get('http://localhost:5000/api/blogs'),
+          axios.get('http://localhost:5000/api/blogs/featured'),
+        ];
+
+        // Only fetch user preferences if user is logged in and has token
+        const token = localStorage.getItem('token');
+        if (user && token) {
+          requests.push(axios.get('http://localhost:5000/api/users/preferences', {
+            headers: { Authorization: `Bearer ${token}` }
+          }));
+        }
+
+        const responses = await Promise.all(requests);
+
+        setBlogs(responses[0].data.blogs);
+        setFeaturedBlogs(responses[1].data.featuredBlogs);
+        
+        // Set user preferences only if user is logged in and we got the data
+        if (user && responses[2]) {
+          setUserPreferences(responses[2].data.preferences);
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        // Don't show error for preferences fetch failure
+        if (!err.message.includes('preferences')) {
+          setError('Failed to fetch blogs. Please try again later.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]); // Add user as dependency
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Oops!</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const recommendedBlogs = getRecommendedBlogs(blogs, userPreferences);
+  const latestBlogs = getLatestBlogs(blogs);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-8 py-12">
         <SearchBar />
         
-        {/* Replace FeaturedPost with FeaturedCarousel */}
         <div className="mb-16">
-          <FeaturedCarousel />
+          {featuredBlogs.length > 0 ? (
+            <FeaturedCarousel posts={featuredBlogs} />
+          ) : (
+            <FeaturedCarousel posts={trendingBlogs.slice(0, 3)} />
+          )}
         </div>
 
         {/* Recommended Posts Section */}
         <section className="mb-16">
-          <SectionTitle title="Recommended Posts" />
+          <SectionTitle 
+            title={getRecommendationTitle()}
+            onViewAll={handleViewAll}
+          />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {recommendedBlogs.map(blog => (
-              <BlogCard key={blog.id} blog={blog} />
+              <BlogCard
+                key={blog._id}
+                blog={blog}
+                onClick={() => handleBlogClick(blog._id)}
+                onLike={(e) => handleLike(blog._id, e)}
+                onBookmark={(e) => handleBookmark(blog._id, e)}
+                isLiked={blog.isLiked}
+                isBookmarked={blog.isBookmarked}
+              />
             ))}
           </div>
         </section>
 
         {/* Latest Posts Section */}
         <section className="mb-16">
-          <SectionTitle title="Latest Posts" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <SectionTitle 
+            title="Latest Posts" 
+            onViewAll={handleViewAll}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {latestBlogs.map(blog => (
-              <BlogCard key={blog.id} blog={blog} />
+              <BlogCard
+                key={blog._id}
+                blog={blog}
+                onClick={() => handleBlogClick(blog._id)}
+                onLike={(e) => handleLike(blog._id, e)}
+                onBookmark={(e) => handleBookmark(blog._id, e)}
+                isLiked={blog.isLiked}
+                isBookmarked={blog.isBookmarked}
+              />
             ))}
           </div>
         </section>

@@ -4,6 +4,8 @@ const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
+const Like = require('../models/Like'); // Add this import
+const Blog = require('../models/Blog'); // Add this import
 
 // Get user profile
 router.get('/profile/:userId', auth, async (req, res) => {
@@ -142,6 +144,73 @@ router.get('/:userId/comments', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching comments:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add new endpoint to get user preferences
+router.get('/preferences', auth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get user's liked blogs with error handling
+    const userLikes = await Like.find({ user: userId })
+      .populate({
+        path: 'blog',
+        select: 'category',
+        match: { status: 'published' }
+      })
+      .lean();
+
+    // Filter out null blog references
+    const validLikes = userLikes.filter(like => like.blog);
+
+    // Calculate preferred categories based on likes
+    const categoryCount = {};
+    validLikes.forEach(like => {
+      if (like.blog?.category) {
+        categoryCount[like.blog.category] = (categoryCount[like.blog.category] || 0) + 1;
+      }
+    });
+
+    // Sort categories by frequency
+    const preferredCategories = Object.entries(categoryCount)
+      .sort(([,a], [,b]) => b - a)
+      .map(([category]) => category);
+
+    // Get user's bookmarks with error handling
+    const user = await User.findById(userId)
+      .populate({
+        path: 'bookmarks',
+        select: 'category',
+        match: { status: 'published' }
+      })
+      .lean();
+
+    const bookmarkedCategories = user.bookmarks
+      .filter(blog => blog) // Filter out null references
+      .map(blog => blog.category)
+      .filter((category, index, self) => self.indexOf(category) === index);
+
+    // Get recent interactions
+    const recentInteractions = validLikes
+      .slice(-5)
+      .map(like => like.blog?.category)
+      .filter(Boolean);
+
+    res.json({
+      success: true,
+      preferences: {
+        preferredCategories,
+        bookmarkedCategories,
+        recentInteractions
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user preferences:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user preferences'
+    });
   }
 });
 
