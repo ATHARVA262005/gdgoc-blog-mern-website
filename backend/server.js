@@ -34,35 +34,27 @@ const usersRoute = require('./routes/users'); // Import the users route
 const app = express();
 
 // Define allowed origins
+const isDevelopment = process.env.NODE_ENV === 'development';
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://localhost:3000',
   'https://gdgocblog.vercel.app',
   'https://gdgoc-blog-backend.vercel.app'
 ];
 
-// Update CORS configuration
+// Simplified CORS configuration
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('Blocked origin:', origin); // Debug logging
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Access-Control-Allow-Origin'],
-  maxAge: 86400 // Cache preflight request for 24 hours
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Ensure OPTIONS requests are handled properly
-app.options('*', cors());
+// Add security headers
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.header('origin'));
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
 
 app.use(express.json());
 
@@ -79,6 +71,16 @@ mongoose.connect(process.env.MONGODB_URI)
       uri: process.env.MONGODB_URI ? 'Set' : 'Not set'
     });
   });
+
+// Add test route before other routes
+app.get('/api/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running correctly',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
