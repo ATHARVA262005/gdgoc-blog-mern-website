@@ -76,7 +76,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.get('/api/test', (req, res) => {
   res.json({
     success: true,
-    message: 'Server is running correctly',
+    message: 'Server is running correctly and accepting requests',
     origin: req.headers.origin,
     timestamp: new Date().toISOString()
   });
