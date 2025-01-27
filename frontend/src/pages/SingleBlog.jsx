@@ -32,7 +32,7 @@ const SingleBlog = () => {
         setLoading(true);
         const token = localStorage.getItem('token');
         const response = await axios.get(
-          `http://localhost:5000/api/blogs/${id}`,
+          `${import.meta.env.VITE_API_URL}/blogs/${id}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           }
@@ -66,7 +66,7 @@ const SingleBlog = () => {
     const trackView = async () => {
       if (blog && blog._id) {
         try {
-          await axios.post(`http://localhost:5000/api/blogs/${blog._id}/view`, {
+          await axios.post(`${import.meta.env.VITE_API_URL}/blogs/${blog._id}/view`, {
             sessionId: localStorage.getItem('sessionId') || Date.now().toString(),
             deviceType: window.innerWidth < 768 ? 'mobile' : 'desktop',
             // Add more tracking data as needed
@@ -180,7 +180,7 @@ const SingleBlog = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/blogs/${id}/comments`,
+        `${import.meta.env.VITE_API_URL}/blogs/${id}/comments`,
         { content: commentInput },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -209,7 +209,7 @@ const SingleBlog = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/blogs/comments/${commentId}/like`,
+        `${import.meta.env.VITE_API_URL}/blogs/comments/${commentId}/like`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }

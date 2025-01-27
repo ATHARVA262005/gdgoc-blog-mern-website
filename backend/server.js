@@ -13,11 +13,16 @@ console.log('Loaded environment variables:', {
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS ? 'Set' : 'Not set',
   ADMIN_MASTER_PASSWORD: process.env.ADMIN_MASTER_PASSWORD ? 'Set' : 'Not set',
-  PORT: process.env.PORT
+  PORT: process.env.PORT,
+  FRONTEND_URL: process.env.FRONTEND_URL
 });
 
 if (!process.env.ADMIN_MASTER_PASSWORD) {
   console.error('Warning: ADMIN_MASTER_PASSWORD is not set in environment variables');
+}
+
+if (!process.env.FRONTEND_URL) {
+  console.error('Warning: FRONTEND_URL is not set in environment variables');
 }
 
 const authRoutes = require('./routes/auth');
@@ -30,7 +35,7 @@ const app = express();
 
 // Update CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

@@ -46,7 +46,7 @@ const TreasureBlogs = () => {
     const fetchBlogs = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:5000/api/blogs');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/blogs`);
         if (response.data.success) {
           setBlogs(response.data.blogs);
           const blogIds = response.data.blogs.map(blog => blog._id);

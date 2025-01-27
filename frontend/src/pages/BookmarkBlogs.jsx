@@ -86,7 +86,7 @@ const BookmarkBlogs = () => {
           return;
         }
   
-        const response = await axios.get('http://localhost:5000/api/blogs/bookmarks', {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/blogs/bookmarks`, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'

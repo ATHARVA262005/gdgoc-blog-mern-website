@@ -26,10 +26,10 @@ const Profile = () => {
         
         // Fetch both profile and comments
         const [profileResponse, commentsResponse] = await Promise.all([
-          axios.get(`http://localhost:5000/api/users/profile/${userId}`, {
+          axios.get(`${import.meta.env.VITE_API_URL}/users/profile/${userId}`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get(`http://localhost:5000/api/users/${userId}/comments`, {
+          axios.get(`${import.meta.env.VITE_API_URL}/users/${userId}/comments`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);

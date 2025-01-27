@@ -37,7 +37,7 @@ axiosInstance.interceptors.request.use(
 
 export const toggleBookmark = async (blogId) => {
   try {
-    const response = await axios.post(`${API_URL}/blogs/${blogId}/bookmark`, {}, {
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/blogs/${blogId}/bookmark`, {}, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`
       }

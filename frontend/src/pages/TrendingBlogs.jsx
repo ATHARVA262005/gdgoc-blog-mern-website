@@ -5,7 +5,7 @@ import BlogCard from '../components/BlogCard';
 import { useNavigate } from 'react-router-dom';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_URL,
   timeout: 5000
 });
 
@@ -23,7 +23,7 @@ const TrendingBlogs = () => {
 
   const fetchTrendingBlogs = async () => {
     try {
-      const response = await api.get('/api/blogs/trending');
+      const response = await api.get('/blogs/trending');
       if (response.data.success) {
         setTrendingBlogs(response.data.trendingBlogs);
         // Fetch like and bookmark statuses for all blogs
@@ -46,10 +46,10 @@ const TrendingBlogs = () => {
     
     try {
       const [bookmarkResponse, likeResponse] = await Promise.all([
-        axios.post('/api/blogs/bookmarks-status', { blogIds }, {
+        api.post('/blogs/bookmarks-status', { blogIds }, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.post('/api/blogs/likes-status', { blogIds }, {
+        api.post('/blogs/likes-status', { blogIds }, {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -70,7 +70,7 @@ const TrendingBlogs = () => {
 
   const handleLike = async (blogId) => {
     try {
-      const response = await api.post(`/api/blogs/${blogId}/like`);
+      const response = await api.post(`/blogs/${blogId}/like`);
       if (response.data.success) {
         setLikeStatuses(prev => ({
           ...prev,
@@ -92,7 +92,7 @@ const TrendingBlogs = () => {
 
   const handleBookmark = async (blogId) => {
     try {
-      const response = await api.post(`/api/blogs/${blogId}/bookmark`);
+      const response = await api.post(`/blogs/${blogId}/bookmark`);
       if (response.data.success) {
         setBookmarkStatuses(prev => ({
           ...prev,

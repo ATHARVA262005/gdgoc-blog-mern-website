@@ -277,8 +277,8 @@ const Home = () => {
       try {
         setLoading(true);
         const requests = [
-          axios.get('http://localhost:5000/api/blogs'),
-          axios.get('http://localhost:5000/api/blogs/featured'),
+          axios.get(`${import.meta.env.VITE_API_URL}/blogs`),
+          axios.get(`${import.meta.env.VITE_API_URL}/blogs/featured`),
         ];
 
         // Add likes status request if user is logged in
