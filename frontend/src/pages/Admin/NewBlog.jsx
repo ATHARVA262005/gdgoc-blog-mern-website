@@ -13,9 +13,11 @@ const NewBlog = () => {
   const [featuredImage, setFeaturedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [status, setStatus] = useState('draft');
-  const [newCategory, setNewCategory] = useState('');
-  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
-  const [isFeatured, setIsFeatured] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [validatingImage, setValidatingImage] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
 
   // Add this useEffect to check font loading
   React.useEffect(() => {
@@ -31,26 +33,15 @@ const NewBlog = () => {
   }, []);
 
   const defaultCategories = [
-    'Development',
-    'Artificial Intelligence',
-    'UI/UX Design',
-    'DevOps',
-    'Cloud Computing',
     'Web Development',
     'Mobile Development',
-    'Machine Learning',
-    'Cybersecurity',
-    'Blockchain',
-    'Data Science',
-    'Frontend',
-    'Backend',
-    'Full Stack',
+    'DevOps & Cloud',
+    'Data Science & AI',
     'Programming Languages',
     'Software Architecture',
-    'Best Practices',
-    'Tutorials',
-    'Career Growth',
-    'Tech News'
+    'Cybersecurity',
+    'System Design',
+    'Other'
   ];
 
   const [categories, setCategories] = useState(defaultCategories);
@@ -106,30 +97,59 @@ const NewBlog = () => {
     setContent(content);
   }, []);
 
-  const handleAddCategory = (e) => {
-    e.preventDefault();
-    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      setCategories([...categories, newCategory.trim()]);
-      setCategory(newCategory.trim());
-      setNewCategory('');
-      setShowNewCategoryInput(false);
+  const validateImageUrl = async (url) => {
+    try {
+      setValidatingImage(true);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Invalid image URL');
+      const contentType = response.headers.get('content-type');
+      if (!contentType.startsWith('image/')) throw new Error('URL is not an image');
+      setImagePreview(url);
+      setFeaturedImage(url);
+      setError('');
+    } catch (error) {
+      setError('Invalid image URL. Please provide a valid direct image link.');
+      setImagePreview('');
+      setFeaturedImage(null);
+    } finally {
+      setValidatingImage(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const blogData = {
-      title,
-      content,
-      category,
-      tags: tags.split(',').map(tag => tag.trim()),
-      status,
-      featuredImage,
-      isFeatured // Add featured status to submission data
-    };
+  const handleSubmit = async (newStatus) => {
+    setStatus(newStatus);
+    setLoading(true);
+    if (!featuredImage) {
+      setError('Featured image is required');
+      setLoading(false);
+      return;
+    }
 
-    // Handle blog submission here
-    console.log(blogData);
+    try {
+      const response = await fetch('/api/blogs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          category,
+          tags: tags.split(',').map(tag => tag.trim()),
+          featuredImage,
+          status: newStatus
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to create blog');
+
+      setShowNotification(true);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -146,24 +166,26 @@ const NewBlog = () => {
           </button>
           <div className="flex gap-3">
             <button
-              onClick={() => setStatus('draft')}
+              type="button"
+              onClick={() => handleSubmit('draft')}
               className="px-4 py-2 rounded-lg border border-gray-300 hover:border-gray-400"
             >
               <Save size={20} className="inline-block mr-2" />
               Save Draft
             </button>
             <button
-              onClick={() => setStatus('published')}
+              type="button"
+              onClick={() => handleSubmit('published')}
+              disabled={loading}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
             >
-              <Send size={20} className="inline-block mr-2" />
-              Publish
+              {loading ? 'Publishing...' : <><Send size={20} className="inline-block mr-2" />Publish</>}
             </button>
           </div>
         </div>
 
         {/* Blog Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form className="space-y-6">
           {/* Title */}
           <div>
             <input
@@ -175,67 +197,53 @@ const NewBlog = () => {
             />
           </div>
 
-          {/* Featured Post Toggle */}
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border">
-            <div>
-              <h3 className="font-medium text-gray-900">Featured Post</h3>
-              <p className="text-sm text-gray-500">
-                Featured posts appear prominently on the home page (600x400 thumbnail)
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsFeatured(!isFeatured)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
-                ${isFeatured ? 'bg-blue-600' : 'bg-gray-200'}`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  ${isFeatured ? 'translate-x-6' : 'translate-x-1'}`}
-              />
-            </button>
-          </div>
-
-          {/* Featured Image */}
-          <div className="border-2 border-dashed rounded-xl p-4 text-center">
-            {imagePreview ? (
-              <div className="relative">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="max-h-[300px] mx-auto rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFeaturedImage(null);
-                    setImagePreview('');
-                  }}
-                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full"
-                >
-                  ×
-                </button>
-                {isFeatured && (
-                  <div className="mt-2 text-sm text-gray-500">
-                    Recommended size for featured posts: 600x400 pixels
-                  </div>
-                )}
+          {/* Featured Image URL Input */}
+          <div className="border-2 border-dashed rounded-xl p-4">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Featured Image URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter direct image URL"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => validateImageUrl(imageUrl)}
+                    disabled={validatingImage || !imageUrl}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {validatingImage ? 'Validating...' : 'Validate'}
+                  </button>
+                </div>
               </div>
-            ) : (
-              <label className="cursor-pointer block">
-                <Upload className="mx-auto mb-2" size={24} />
-                <span className="text-gray-600">
-                  Upload Featured Image
-                  {isFeatured && " (Recommended: 600x400px)"}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
-            )}
+
+              {imagePreview && (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="max-h-[300px] mx-auto rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageUrl('');
+                      setImagePreview('');
+                      setFeaturedImage(null);
+                    }}
+                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Updated Quill Editor */}
@@ -257,52 +265,18 @@ const NewBlog = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category
               </label>
-              {showNewCategoryInput ? (
-                <div className="space-y-2">
-                  <form onSubmit={handleAddCategory} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      placeholder="Enter new category"
-                      className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Add
-                    </button>
-                  </form>
-                  <button
-                    onClick={() => setShowNewCategoryInput(false)}
-                    className="text-sm text-gray-600 hover:text-gray-800"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.sort().map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => setShowNewCategoryInput(true)}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    + Add New Category
-                  </button>
-                </div>
-              )}
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Category</option>
+                {defaultCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -319,6 +293,39 @@ const NewBlog = () => {
           </div>
         </form>
       </div>
+      {error && (
+        <div className="fixed top-4 right-4 bg-red-100 text-red-800 py-2 px-4 rounded-lg shadow">
+          {error}
+          <button
+            className="ml-2 text-sm text-red-800 hover:opacity-75"
+            onClick={() => setError('')}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      {showNotification && (
+        <div className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow ${
+          status === 'published' 
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {status === 'published' ? 'Post Published!' : 'Post Saved as Draft'}
+          <button
+            className={`ml-2 text-sm hover:opacity-75 ${
+              status === 'published' 
+                ? 'text-green-800' 
+                : 'text-yellow-800'
+            }`}
+            onClick={() => {
+              setShowNotification(false);
+              navigate('/admin/dashboard');
+            }}
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,62 +1,83 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ThumbsUp, MessageCircle, Bookmark, Share2, Clock, Send, ArrowLeft, Check } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Bookmark, Share2, Clock, Send, ArrowLeft, Check, BookmarkCheck } from 'lucide-react';
+import axios from 'axios';
+import { toggleBookmark, getBookmarkStatus, toggleLike, addComment } from '../services/blogService';
+import Toast from '../components/Toast';
+import { addToRecentlyViewed } from '../utils/recentlyViewed';
+import { useAuth } from '../contexts/AuthContext';  // Add this import
 
-// This would typically come from an API call using the ID
-const blog = {
-  id: 1,
-  title: "Getting Started with React Hooks",
-  content: `
-    <p class="mb-4">React Hooks have revolutionized how we write React components. In this comprehensive guide, we'll explore the most important hooks and their use cases.</p>
-    
-    <h2 class="text-2xl font-bold mt-8 mb-4">Understanding useState</h2>
-    <p class="mb-4">The useState hook is the foundation of state management in functional components. It provides a simple way to declare state variables and their updating functions.</p>
-    
-    <h2 class="text-2xl font-bold mt-8 mb-4">useEffect and Side Effects</h2>
-    <p class="mb-4">useEffect is crucial for handling side effects in your components. It replaces lifecycle methods like componentDidMount and componentDidUpdate from class components.</p>
-    
-    <h2 class="text-2xl font-bold mt-8 mb-4">Custom Hooks</h2>
-    <p class="mb-4">Creating custom hooks allows you to extract component logic into reusable functions. This promotes code reuse and keeps your components clean.</p>
-  `,
-  author: "Sarah Johnson",
-  authorImage: "https://placehold.co/100x100",
-  date: "Jan 15, 2025",
-  readTime: "8 min read",
-  likes: 234,
-  comments: 45,
-  category: "Development",
-  image: "https://placehold.co/1200x600",
-  tags: ["React", "JavaScript", "Web Development", "Programming"]
-};
-
-// Add mock comments data
-const mockComments = [
-  {
-    id: 1,
-    user: "Alex Thompson",
-    userImage: "https://placehold.co/100x100",
-    content: "Great article! I especially liked the section about useEffect dependencies.",
-    date: "2 days ago",
-    likes: 12,
-    isLiked: false
-  },
-  {
-    id: 2,
-    user: "Emma Wilson",
-    userImage: "https://placehold.co/100x100",
-    content: "This helped me understand hooks much better. Thanks for sharing!",
-    date: "1 day ago",
-    likes: 8,
-    isLiked: true
-  }
-];
+const DEFAULT_PROFILE_IMAGE = "/images/profile_administrator.webp";
 
 const SingleBlog = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [comments, setComments] = useState(mockComments);
+  const { user: currentUser } = useAuth(); // Add currentUser from auth context
+  const [blog, setBlog] = useState(null);
+  const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [isLiked, setIsLiked] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
+
+  // Fetch blog data
+  useEffect(() => {
+    const fetchBlog = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `http://localhost:5000/api/blogs/${id}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          }
+        );
+        if (response.data.success) {
+          setBlog(response.data.blog);
+          setIsLiked(response.data.blog.isLiked);
+          if (response.data.blog.comments) {
+            setComments(response.data.blog.comments);
+          }
+        }
+      } catch (err) {
+        setError('Failed to fetch blog. Please try again later.');
+        console.error('Error fetching blog:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlog();
+  }, [id]);
+
+  useEffect(() => {
+    if (blog?._id) {
+      addToRecentlyViewed(blog._id);
+    }
+  }, [blog]);
+
+  // Track view
+  useEffect(() => {
+    const trackView = async () => {
+      if (blog && blog._id) {
+        try {
+          await axios.post(`http://localhost:5000/api/blogs/${blog._id}/view`, {
+            sessionId: localStorage.getItem('sessionId') || Date.now().toString(),
+            deviceType: window.innerWidth < 768 ? 'mobile' : 'desktop',
+            // Add more tracking data as needed
+          });
+        } catch (err) {
+          console.error('Error tracking view:', err);
+        }
+      }
+    };
+
+    trackView();
+  }, [blog]);
 
   useEffect(() => {
     let timer;
@@ -68,35 +89,94 @@ const SingleBlog = () => {
     return () => clearTimeout(timer);
   }, [showCopyTooltip]);
 
-  const handleAddComment = (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    const comment = {
-      id: comments.length + 1,
-      user: "Current User", // This would come from auth context
-      userImage: "https://placehold.co/100x100",
-      content: newComment,
-      date: "Just now",
-      likes: 0,
-      isLiked: false
+  // Add effect to check bookmark status on load
+  useEffect(() => {
+    const checkBookmarkStatus = async () => {
+      if (blog?._id && localStorage.getItem('token')) {
+        try {
+          const response = await getBookmarkStatus(blog._id);
+          if (response.success) {
+            setIsBookmarked(response.isBookmarked);
+          }
+        } catch (err) {
+          console.error('Error checking bookmark status:', err);
+          // Optionally show toast for error
+          showToast('Failed to check bookmark status', 'error');
+        }
+      }
     };
 
-    setComments([comment, ...comments]);
-    setNewComment('');
+    checkBookmarkStatus();
+  }, [blog?._id]);
+
+  // Only add auth header for protected operations
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!commentInput.trim()) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('Please login to comment', 'error');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/blogs/${id}/comments`,
+        { content: commentInput },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.success) {
+        setComments(prev => [response.data.comment, ...prev]);
+        setCommentInput('');
+        showToast('Comment added successfully');
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      showToast('Failed to add comment', 'error');
+    }
   };
 
-  const handleLikeComment = (commentId) => {
-    setComments(comments.map(comment => {
-      if (comment.id === commentId) {
-        return {
-          ...comment,
-          likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-          isLiked: !comment.isLiked
-        };
+  const handleLikeComment = async (commentId) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('Please login to like comments', 'error');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/blogs/${id}/comments/${commentId}/like`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.success) {
+        setComments(prev => prev.map(comment => {
+          if (comment._id === response.data.commentId) {
+            return {
+              ...comment,
+              isLiked: response.data.isLiked,
+              likeCount: response.data.likeCount,
+              likes: response.data.isLiked 
+                ? [...(comment.likes || []), currentUser._id]
+                : (comment.likes || []).filter(id => id !== currentUser._id)
+            };
+          }
+          return comment;
+        }));
       }
-      return comment;
-    }));
+    } catch (error) {
+      console.error('Error liking comment:', error);
+      showToast('Failed to like comment', 'error');
+    }
   };
 
   const handleShare = async () => {
@@ -108,8 +188,104 @@ const SingleBlog = () => {
     }
   };
 
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
+  // Update handleBookmark function
+  const handleBookmark = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('Please login to bookmark posts', 'error');
+      navigate('/login');
+      return;
+    }
+    try {
+      const response = await toggleBookmark(blog._id);
+      if (response.success) {
+        setIsBookmarked(response.isBookmarked);
+        showToast(response.message);
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Failed to update bookmark';
+      console.error('Error toggling bookmark:', err);
+      showToast(errorMessage, 'error');
+    }
+  };
+
+  // Add handleLike function
+  const handleLike = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('Please login to like posts', 'error');
+      navigate('/login');
+      return;
+    }
+    try {
+      const response = await toggleLike(blog._id);
+      if (response.success) {
+        setIsLiked(response.isLiked);
+        setBlog(prev => ({
+          ...prev,
+          stats: {
+            ...prev.stats,
+            likeCount: response.likeCount
+          }
+        }));
+        showToast(response.message);
+      }
+    } catch (err) {
+      console.error('Error toggling like:', err);
+      showToast('Failed to update like', 'error');
+    }
+  };
+
+  // Add function to handle username click
+  const handleUserClick = (userId) => {
+    navigate(`/profile/${userId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading blog...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !blog) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p>{error || 'Blog not found'}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 text-blue-600 hover:underline"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      {/* Add Toast component */}
+      {toast.show && (
+        <Toast 
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ show: false, message: '', type: 'success' })}
+        />
+      )}
+
       <article className="max-w-4xl mx-auto px-4">
         {/* Back Button */}
         <button
@@ -120,24 +296,24 @@ const SingleBlog = () => {
           <span>Back</span>
         </button>
 
-        {/* Header */}
+        {/* Blog Content */}
         <header className="mb-8">
           <h1 className="text-4xl font-bold mb-4">{blog.title}</h1>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <img 
-                src={blog.authorImage} 
-                alt={blog.author} 
-                className="w-12 h-12 rounded-full"
+                src={blog.author?.avatar || DEFAULT_PROFILE_IMAGE} 
+                alt={blog.author?.username} 
+                className="w-12 h-12 rounded-full object-cover"
               />
               <div>
-                <p className="font-medium">{blog.author}</p>
+                <p className="font-medium">{blog.author?.username}</p>
                 <div className="flex items-center gap-3 text-sm text-gray-500">
-                  <span>{blog.date}</span>
+                  <span>{new Date(blog.createdAt).toLocaleDateString()}</span>
                   <span>•</span>
                   <div className="flex items-center gap-1">
                     <Clock size={14} />
-                    <span>{blog.readTime}</span>
+                    <span>{Math.ceil(blog.content.length / 1000)} min read</span>
                   </div>
                 </div>
               </div>
@@ -161,16 +337,33 @@ const SingleBlog = () => {
                   </div>
                 )}
               </div>
-              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <Bookmark size={20} />
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={handleBookmark} 
+                  className={`p-2 hover:bg-gray-100 rounded-full transition-colors ${
+                    isBookmarked ? 'text-blue-600' : 'text-gray-600'
+                  }`}
+                >
+                  {isBookmarked ? (
+                    <BookmarkCheck
+                      size={20}
+                      className="transition-all duration-300 transform scale-110"
+                    />
+                  ) : (
+                    <Bookmark
+                      size={20}
+                      className="transition-all duration-300 transform scale-100"
+                    />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </header>
 
         {/* Featured Image */}
         <img 
-          src={blog.image} 
+          src={blog.featuredImage} 
           alt={blog.title}
           className="w-full h-[400px] object-cover rounded-xl mb-8"
         />
@@ -185,7 +378,7 @@ const SingleBlog = () => {
         <footer className="mt-12 pt-6 border-t">
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
-              {blog.tags.map(tag => (
+              {blog.tags && blog.tags.map(tag => (
                 <span 
                   key={tag} 
                   className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm"
@@ -195,13 +388,23 @@ const SingleBlog = () => {
               ))}
             </div>
             <div className="flex items-center gap-6">
-              <button className="flex items-center gap-2 text-gray-600">
-                <ThumbsUp size={20} />
-                <span>{blog.likes}</span>
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={handleLike}
+                  className={`flex items-center gap-2 ${
+                    isLiked ? 'text-blue-600' : 'text-gray-600'
+                  } hover:text-blue-600 transition-colors`}
+                >
+                  <ThumbsUp 
+                    size={20} 
+                    className={isLiked ? 'fill-current' : ''}
+                  />
+                  <span>{blog.stats?.likeCount || 0}</span>
+                </button>
+              </div>
               <button className="flex items-center gap-2 text-gray-600">
                 <MessageCircle size={20} />
-                <span>{blog.comments}</span>
+                <span>{blog.stats?.commentCount || 0}</span>
               </button>
             </div>
           </div>
@@ -215,26 +418,27 @@ const SingleBlog = () => {
           <form onSubmit={handleAddComment} className="mb-8">
             <div className="flex gap-4">
               <img 
-                src="https://placehold.co/100x100" 
-                alt="Current user" 
-                className="w-10 h-10 rounded-full"
+                src={currentUser?.profileImage?.url || DEFAULT_PROFILE_IMAGE}
+                alt={currentUser?.username || 'User'} 
+                className="w-10 h-10 rounded-full object-cover"
               />
               <div className="flex-1">
                 <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder={currentUser ? "Add a comment..." : "Please login to comment"}
+                  disabled={!currentUser}
                   className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   rows="3"
                 />
                 <div className="flex justify-end mt-2">
                   <button
                     type="submit"
-                    disabled={!newComment.trim()}
+                    disabled={!commentInput.trim() || !currentUser}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Send size={16} />
-                    Post Comment
+                    {currentUser ? 'Post Comment' : 'Login to Comment'}
                   </button>
                 </div>
               </div>
@@ -244,26 +448,42 @@ const SingleBlog = () => {
           {/* Comments List */}
           <div className="space-y-6">
             {comments.map(comment => (
-              <div key={comment.id} className="flex gap-4 p-4 bg-white rounded-xl shadow-sm">
-                <img 
-                  src={comment.userImage} 
-                  alt={comment.user} 
-                  className="w-10 h-10 rounded-full"
-                />
+              <div key={comment._id} className="flex gap-4 p-4 bg-white rounded-xl shadow-sm">
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => comment.user?._id && handleUserClick(comment.user._id)}
+                >
+                  <img 
+                    src={comment.user?.profileImage || DEFAULT_PROFILE_IMAGE}
+                    alt={comment.user?.username || 'User'} 
+                    className="w-10 h-10 rounded-full object-cover hover:ring-2 hover:ring-blue-500 transition-all"
+                  />
+                </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h3 className="font-medium">{comment.user}</h3>
-                      <p className="text-sm text-gray-500">{comment.date}</p>
+                      {comment.user?._id ? (
+                        <button
+                          onClick={() => handleUserClick(comment.user._id)}
+                          className="font-medium hover:text-blue-600 transition-colors"
+                        >
+                          {comment.user.username}
+                        </button>
+                      ) : (
+                        <span className="font-medium text-gray-500">Deleted User</span>
+                      )}
+                      <p className="text-xs text-gray-400">
+                        {new Date(comment.createdAt).toLocaleString()}
+                      </p>
                     </div>
                     <button 
-                      onClick={() => handleLikeComment(comment.id)}
+                      onClick={() => handleLikeComment(comment._id)}
                       className={`flex items-center gap-1 ${
                         comment.isLiked ? 'text-blue-600' : 'text-gray-500'
                       } hover:text-blue-600 transition-colors`}
                     >
                       <ThumbsUp size={16} className={comment.isLiked ? 'fill-current' : ''} />
-                      <span>{comment.likes}</span>
+                      <span>{comment.likeCount || 0}</span>
                     </button>
                   </div>
                   <p className="text-gray-600">{comment.content}</p>

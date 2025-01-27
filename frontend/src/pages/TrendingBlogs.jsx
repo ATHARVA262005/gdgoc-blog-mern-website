@@ -1,83 +1,117 @@
-import React from 'react';
-import { ThumbsUp, MessageCircle, Bookmark, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp } from 'lucide-react';
+import axios from 'axios';
+import BlogCard from '../components/BlogCard';
+import { useNavigate } from 'react-router-dom';
 
-// Simulating most engaged posts sorted by total engagement (likes + comments)
-const trendingBlogs = [
-  {
-    id: 1,
-    title: "The Complete Guide to Web3 Development",
-    excerpt: "Deep dive into blockchain, smart contracts, and decentralized applications...",
-    author: "Alex Thompson",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 15, 2025",
-    likes: 2892,
-    comments: 456,
-    category: "Blockchain",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 2,
-    title: "Machine Learning: 2025 Trends",
-    excerpt: "Exploring the latest breakthroughs in AI and machine learning technologies...",
-    author: "Maria Garcia",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 14, 2025",
-    likes: 2154,
-    comments: 398,
-    category: "AI",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 3,
-    title: "10 Must-Know JavaScript Features",
-    excerpt: "Latest JavaScript features that every developer should master in 2025...",
-    author: "David Kim",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 13, 2025",
-    likes: 1823,
-    comments: 287,
-    category: "JavaScript",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 4,
-    title: "Understanding Docker and Kubernetes",
-    excerpt: "A comprehensive guide to containerization and orchestration...",
-    author: "Emily Chen",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 12, 2025",
-    likes: 1654,
-    comments: 234,
-    category: "DevOps",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 5,
-    title: "The Future of Frontend Development",
-    excerpt: "Exploring upcoming trends and technologies in frontend development...",
-    author: "James Wilson",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 11, 2025",
-    likes: 1432,
-    comments: 198,
-    category: "Frontend",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 6,
-    title: "Mastering System Design",
-    excerpt: "Learn how to design scalable systems for enterprise applications...",
-    author: "Sarah Lee",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 10, 2025",
-    likes: 1298,
-    comments: 167,
-    category: "Architecture",
-    image: "https://placehold.co/600x400"
-  }
-];
+const api = axios.create({
+  baseURL: 'http://localhost:5000',
+  timeout: 5000
+});
 
 const TrendingBlogs = () => {
+  const [trendingBlogs, setTrendingBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [likeStatuses, setLikeStatuses] = useState({});
+  const [bookmarkStatuses, setBookmarkStatuses] = useState({});
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchTrendingBlogs();
+  }, []);
+
+  const fetchTrendingBlogs = async () => {
+    try {
+      const response = await api.get('/api/blogs/trending');
+      if (response.data.success) {
+        setTrendingBlogs(response.data.trendingBlogs);
+        // Fetch like and bookmark statuses for all blogs
+        fetchLikeStatuses(response.data.trendingBlogs.map(blog => blog.id));
+        fetchBookmarkStatuses(response.data.trendingBlogs.map(blog => blog.id));
+      }
+    } catch (err) {
+      console.error('Error details:', err.response?.data || err.message);
+      setError('Failed to fetch trending blogs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLikeStatuses = async (blogIds) => {
+    try {
+      const response = await api.post('/api/blogs/likes-status', { blogIds });
+      if (response.data.success) {
+        setLikeStatuses(response.data.likeStatuses);
+      }
+    } catch (error) {
+      console.error('Error fetching like statuses:', error);
+    }
+  };
+
+  const fetchBookmarkStatuses = async (blogIds) => {
+    try {
+      const response = await api.post('/api/blogs/bookmarks-status', { blogIds });
+      if (response.data.success) {
+        setBookmarkStatuses(response.data.bookmarkStatuses);
+      }
+    } catch (error) {
+      console.error('Error fetching bookmark statuses:', error);
+    }
+  };
+
+  const handleLike = async (blogId) => {
+    try {
+      const response = await api.post(`/api/blogs/${blogId}/like`);
+      if (response.data.success) {
+        setLikeStatuses(prev => ({
+          ...prev,
+          [blogId]: response.data.isLiked
+        }));
+        // Update like count in trending blogs
+        setTrendingBlogs(prev => 
+          prev.map(blog => 
+            blog.id === blogId 
+              ? { ...blog, likes: response.data.likeCount }
+              : blog
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleBookmark = async (blogId) => {
+    try {
+      const response = await api.post(`/api/blogs/${blogId}/bookmark`);
+      if (response.data.success) {
+        setBookmarkStatuses(prev => ({
+          ...prev,
+          [blogId]: response.data.isBookmarked
+        }));
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-8 py-12">
@@ -88,38 +122,27 @@ const TrendingBlogs = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {trendingBlogs.map(blog => (
-            <div key={blog.id} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
-              <div className="relative h-48 overflow-hidden">
-                <img src={blog.image} alt={blog.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
-                <button className="absolute top-4 right-4 p-2 bg-white/30 backdrop-blur-sm rounded-full hover:bg-white/50 transition-colors">
-                  <Bookmark size={20} className="text-white" />
-                </button>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <img src={blog.authorImage} alt={blog.author} className="w-8 h-8 rounded-full" />
-                  <div>
-                    <p className="font-medium text-sm">{blog.author}</p>
-                    <p className="text-xs text-gray-500">{blog.date}</p>
-                  </div>
-                </div>
-                <h3 className="font-bold text-xl mb-2 line-clamp-2">{blog.title}</h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{blog.excerpt}</p>
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600">{blog.category}</span>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <ThumbsUp size={16} />
-                      <span>{blog.likes.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageCircle size={16} />
-                      <span>{blog.comments.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BlogCard
+              key={blog.id}
+              blog={{
+                ...blog,
+                stats: {
+                  likeCount: blog.stats?.likeCount || 0,
+                  commentCount: blog.stats?.commentCount || 0
+                }
+              }}
+              isLiked={likeStatuses[blog.id] || false}
+              isBookmarked={bookmarkStatuses[blog.id] || false}
+              onLike={(e) => {
+                e.stopPropagation();
+                handleLike(blog.id);
+              }}
+              onBookmark={(e) => {
+                e.stopPropagation();
+                handleBookmark(blog.id);
+              }}
+              onClick={() => navigate(`/blog/${blog.id}`)}
+            />
           ))}
         </div>
       </div>

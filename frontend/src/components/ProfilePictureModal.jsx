@@ -5,6 +5,10 @@ import { profilePictures } from '../data/profilePictures';
 const ProfilePictureModal = ({ isOpen, onClose, onSelect, currentImage }) => {
   if (!isOpen) return null;
 
+  const handleImageError = (e) => {
+    e.target.src = '/default-avatar.png'; // Fallback image
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 w-full max-w-2xl">
@@ -32,8 +36,9 @@ const ProfilePictureModal = ({ isOpen, onClose, onSelect, currentImage }) => {
             >
               <div className="aspect-square relative">
                 <img
-                  src={picture.url}
+                  src={picture.url || '/default-avatar.png'}
                   alt={picture.name}
+                  onError={handleImageError}
                   className="w-full h-full object-cover rounded-lg"
                 />
                 {currentImage === picture.url && (

@@ -1,11 +1,39 @@
+import axios from 'axios';
+
 const API_URL = 'http://localhost:5000/api/auth';
 
-// Helper function to get auth header
-const getAuthHeader = () => {
-  const token = localStorage.getItem('token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+// Enhanced session management
+const setSession = (token, user) => {
+  if (token && user) {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+    
+    // Set auto logout after token expiry
+    const tokenData = JSON.parse(atob(token.split('.')[1]));
+    const expiresIn = (tokenData.exp * 1000) - Date.now();
+    setTimeout(() => {
+      logout();
+      window.location.reload();
+    }, expiresIn);
+  } else {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    delete axios.defaults.headers.common.Authorization;
+  }
 };
 
+const getSession = () => {
+  try {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user'));
+    return { token, user };
+  } catch (error) {
+    return { token: null, user: null };
+  }
+};
+
+// Modified login function
 export const login = async (email, password) => {
   try {
     const response = await fetch(`${API_URL}/login`, {
@@ -16,6 +44,11 @@ export const login = async (email, password) => {
     
     const data = await response.json();
     if (!response.ok) throw new Error(data.message);
+    
+    // Store session data with token and complete user object
+    if (data.token && data.user) {
+      setSession(data.token, data.user);
+    }
     
     return data;
   } catch (error) {
@@ -110,9 +143,52 @@ export const resendOTP = async (email) => {
   return data;
 };
 
+// Modified logout function
 export const logout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  setSession(null, null);
+};
+
+// Modified isAuthenticated function
+export const isAuthenticated = () => {
+  try {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    
+    if (!token || !userStr) return false;
+    
+    const tokenData = JSON.parse(atob(token.split('.')[1]));
+    if (tokenData.exp * 1000 < Date.now()) {
+      setSession(null, null);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Auth check error:', error);
+    setSession(null, null);
+    return false;
+  }
+};
+
+// Modified getCurrentUser function
+export const getCurrentUser = () => {
+  const { user } = getSession();
+  return user;
+};
+
+// Initialize auth state on app load
+export const initializeAuth = () => {
+  const { token } = getSession();
+  if (token) {
+    // Set default auth header
+    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+  }
+};
+
+// Update requiresOnboarding to use getCurrentUser
+export const requiresOnboarding = () => {
+  const user = getCurrentUser();
+  return user && !user.onboarded;
 };
 
 export const completeOnboarding = async (userData) => {
@@ -133,31 +209,5 @@ export const completeOnboarding = async (userData) => {
   } catch (error) {
     console.error('Onboarding error:', error);
     throw error;
-  }
-};
-
-export const isAuthenticated = () => {
-  try {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    if (!token || !userStr) return false;
-    
-    const user = JSON.parse(userStr);
-    return !!token && user.onboarded;
-  } catch (error) {
-    return false;
-  }
-};
-
-export const requiresOnboarding = () => {
-  try {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    if (!token || !userStr) return false;
-    
-    const user = JSON.parse(userStr);
-    return !!token && !user.onboarded;
-  } catch (error) {
-    return false;
   }
 };

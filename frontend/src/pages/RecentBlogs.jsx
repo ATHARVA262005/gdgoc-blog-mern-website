@@ -1,49 +1,98 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThumbsUp, MessageCircle, Bookmark, Clock } from 'lucide-react';
-
-const recentBlogs = [
-  {
-    id: 1,
-    title: "Getting Started with React Hooks",
-    excerpt: "Learn how to use React Hooks to manage state and side effects in your functional components...",
-    author: "Sarah Johnson",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 15, 2025",
-    visitedAt: "2 minutes ago",
-    likes: 234,
-    comments: 45,
-    category: "Development",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 2,
-    title: "The Future of AI in 2025",
-    excerpt: "Exploring the latest breakthroughs in AI and machine learning technologies...",
-    author: "Maria Garcia",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 14, 2025",
-    visitedAt: "1 hour ago",
-    likes: 189,
-    comments: 32,
-    category: "AI",
-    image: "https://placehold.co/600x400"
-  },
-  {
-    id: 3,
-    title: "10 Must-Know JavaScript Features",
-    excerpt: "Latest JavaScript features that every developer should master in 2025...",
-    author: "David Kim",
-    authorImage: "https://placehold.co/100x100",
-    date: "Jan 13, 2025",
-    visitedAt: "3 hours ago",
-    likes: 156,
-    comments: 28,
-    category: "JavaScript",
-    image: "https://placehold.co/600x400"
-  }
-];
+import axios from 'axios';
+import { getVisitedTime } from '../utils/recentlyViewed';
+import { useNavigate } from 'react-router-dom';
 
 const RecentBlogs = () => {
+  const navigate = useNavigate();
+  const [blogs, setBlogs] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchRecentlyViewedBlogs();
+  }, [page]);
+
+  const getRecentlyViewedBlogIds = () => {
+    try {
+      const recentlyViewed = localStorage.getItem('recentlyViewedBlogs');
+      console.log('Recently viewed from localStorage:', recentlyViewed);
+      return recentlyViewed ? JSON.parse(recentlyViewed) : [];
+    } catch (error) {
+      console.error('Error parsing recently viewed blogs:', error);
+      return [];
+    }
+  };
+
+  const fetchRecentlyViewedBlogs = async () => {
+    try {
+      setLoading(true);
+      const blogIds = getRecentlyViewedBlogIds();
+      console.log('Fetching blogs with IDs:', blogIds);
+
+      if (blogIds.length === 0) {
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.post('/api/blogs/recently-viewed', {
+        blogIds,
+        page,
+        limit: 3
+      });
+
+      if (response.data.success) {
+        const formattedBlogs = response.data.blogs.map(blog => ({
+          id: blog._id,
+          title: blog.title,
+          excerpt: blog.content?.substring(0, 150) + '...',
+          author: blog.author?.username || 'Unknown',
+          authorImage: blog.author?.profileImage?.url || '/images/profile_administrator.webp',
+          date: new Date(blog.createdAt).toLocaleDateString(),
+          visitedAt: getVisitedTime(blog._id),
+          likes: blog.stats?.likeCount || 0,
+          comments: blog.stats?.commentCount || 0,
+          category: blog.category,
+          image: blog.featuredImage || 'https://placehold.co/600x400'
+        }));
+
+        if (page === 1) {
+          setBlogs(formattedBlogs);
+        } else {
+          setBlogs(prev => [...prev, ...formattedBlogs]);
+        }
+        setHasMore(response.data.hasMore);
+      }
+    } catch (error) {
+      console.error('Error fetching recently viewed blogs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMore = () => {
+    setPage(prev => prev + 1);
+  };
+
+  const handleBlogClick = (blogId) => {
+    navigate(`/blog/${blogId}`);
+  };
+
+  if (blogs.length === 0 && !loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Clock className="text-blue-600 mx-auto mb-4" size={48} />
+          <h2 className="text-2xl font-bold mb-2">No Recent Blogs</h2>
+          <p className="text-gray-600">Start exploring blogs to see your recent views here.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="px-8 py-12">
@@ -53,9 +102,12 @@ const RecentBlogs = () => {
         </div>
         
         <div className="space-y-6">
-          {recentBlogs.map(blog => (
-            <div key={blog.id} 
-              className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
+          {blogs.map(blog => (
+            <div 
+              key={blog.id} 
+              onClick={() => handleBlogClick(blog.id)}
+              className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+            >
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 relative">
                   <img 
@@ -102,6 +154,18 @@ const RecentBlogs = () => {
             </div>
           ))}
         </div>
+
+        {hasMore && (
+          <div className="mt-8 text-center">
+            <button
+              onClick={loadMore}
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Loading...' : 'Load More'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

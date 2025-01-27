@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Calendar, Mail, Github, Twitter, Linkedin, Globe, ThumbsUp, Loader, Edit2 } from 'lucide-react';
+import { User, Calendar, Mail, Github, XIcon, Linkedin, Globe, ThumbsUp, Loader, Edit2 } from 'lucide-react';
+import { FaXTwitter } from "react-icons/fa6";
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProfile, getUserComments, updateProfilePicture, updateUserProfile } from '../services/userService';
 import ProfilePictureModal from '../components/ProfilePictureModal';
@@ -49,24 +50,45 @@ const UserProfile = () => {
     const fetchUserData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
+        
+        // Get the user ID from auth context
+        if (!user?.id) {
+          throw new Error('User ID not found');
+        }
+
         const [profileData, commentsData] = await Promise.all([
           getUserProfile(user.id),
           getUserComments(user.id)
         ]);
+
+        // Update local storage with latest user data
+        if (profileData) {
+          localStorage.setItem('user', JSON.stringify({
+            ...user,
+            ...profileData
+          }));
+        }
         
         setUserData(profileData);
         setUserComments(commentsData);
       } catch (err) {
+        console.error('Error fetching user data:', err);
         setError(err.message || 'Failed to fetch user data');
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (user?.id) {
-      fetchUserData();
-    }
+    fetchUserData();
   }, [user?.id]);
+
+  // Add a redirect if user is not onboarded
+  useEffect(() => {
+    if (userData && !userData.onboarded) {
+      navigate('/onboarding', { state: { userData } });
+    }
+  }, [userData]);
 
   if (isLoading) {
     return (
@@ -93,6 +115,46 @@ const UserProfile = () => {
       month: 'long',
       year: 'numeric'
     });
+  };
+
+  const renderSocialLinks = () => {
+    if (!userData.socialLinks) return null;
+
+    const socialIcons = {
+      website: { icon: Globe, label: 'Website' },
+      github: { icon: Github, label: 'GitHub' },
+      x: { icon: FaXTwitter, label: 'X' },
+      twitter: { icon: FaXTwitter, label: 'X' }, // Support legacy twitter field
+      linkedin: { icon: Linkedin, label: 'LinkedIn' }
+    };
+
+    return Object.entries(userData.socialLinks)
+      .filter(([platform, url]) => {
+        // Skip if no URL or if it's twitter and we already have 'x'
+        if (!url || !url.trim()) return false;
+        if (platform === 'twitter' && userData.socialLinks.x) return false;
+        return true;
+      })
+      .map(([platform, url]) => {
+        // Handle both 'twitter' and 'x' cases
+        const socialInfo = socialIcons[platform === 'twitter' ? 'x' : platform];
+        if (!socialInfo) return null;
+
+        const { icon: Icon, label } = socialInfo;
+        return (
+          <a
+            key={platform}
+            href={url.startsWith('http') ? url : `https://${url}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+          >
+            <Icon size={16} />
+            <span>{label}</span>
+          </a>
+        );
+      })
+      .filter(Boolean); // Remove any null entries
   };
 
   return (
@@ -124,23 +186,7 @@ const UserProfile = () => {
                       <Calendar size={16} />
                       <span>Joined {formatJoinDate(userData.createdAt)}</span>
                     </div>
-                    {userData.socialLinks && Object.entries(userData.socialLinks)
-                      .filter(([_, url]) => url)
-                      .map(([platform, url]) => (
-                        <a
-                          key={platform}
-                          href={url.startsWith('http') ? url : `https://${url}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
-                        >
-                          {platform === 'github' && <Github size={16} />}
-                          {platform === 'twitter' && <Twitter size={16} />}
-                          {platform === 'linkedin' && <Linkedin size={16} />}
-                          {platform === 'website' && <Globe size={16} />}
-                          <span className="capitalize">{platform}</span>
-                        </a>
-                    ))}
+                    {renderSocialLinks()}
                   </div>
                 </div>
               </div>

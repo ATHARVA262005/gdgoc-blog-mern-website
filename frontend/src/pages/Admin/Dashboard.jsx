@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Users, FileText, Eye, TrendingUp, Edit, Trash2, Plus, Star, Search, Mail, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ViewAnalytics from './ViewAnalytics';
 
 // Mock data
 const recentPosts = [
@@ -40,32 +41,6 @@ const allUsers = [
   lastActive: '2 days ago'
 })));
 
-const allPosts = [
-  {
-    id: 1,
-    title: 'Getting Started with React Hooks',
-    status: 'Published',
-    date: '2024-01-15',
-    views: 1234,
-    comments: 45,
-    isFeatured: true,
-    author: 'John Doe',
-    category: 'Development'
-  },
-  {
-    id: 2,
-    title: 'The Future of AI in 2025',
-    status: 'Draft',
-    date: '2024-01-14',
-    views: 0,
-    comments: 0,
-    isFeatured: false,
-    author: 'Jane Smith',
-    category: 'AI'
-  },
-  // ...existing stats...
-];
-
 const stats = [
   { title: 'Total Posts', value: '124', icon: FileText, change: '+12%' },
   { title: 'Total Views', value: '45.2K', icon: Eye, change: '+8%' },
@@ -79,31 +54,197 @@ const Dashboard = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
-  const [posts, setPosts] = useState(allPosts);
+  const [posts, setPosts] = useState([]);
+  const [users, setUsers] = useState([]);
+
+  // Add state for analytics
+  const [analytics, setAnalytics] = useState({
+    totalViews: 0,
+    viewsByPost: [],
+    last30Days: []
+  });
+
+  // Add new state for dashboard stats
+  const [dashboardStats, setDashboardStats] = useState({
+    totalPosts: 0,
+    totalViews: 0,
+    totalUsers: 0,
+    engagementRate: 0
+  });
+
+  // Add state for showing analytics
+  const [showAnalytics, setShowAnalytics] = useState(false);
+
+  // Add function to fetch dashboard stats
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      // Fetch analytics data, posts, and total users
+      const [analyticsRes, postsRes, usersRes] = await Promise.all([
+        fetch('/api/blogs/analytics/views', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+        }),
+        fetch('/api/blogs/admin', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+        }),
+        fetch('/api/users', { // Fetch total users
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+        })
+      ]);
+
+      const [analyticsData, postsData, usersData] = await Promise.all([
+        analyticsRes.json(),
+        postsRes.json(),
+        usersRes.json()
+      ]);
+
+      // Calculate engagement rate (views per post)
+      const totalPosts = postsData.blogs.length;
+      const totalViews = analyticsData.stats?.total?.totalViews || 0;
+      const engagementRate = totalPosts > 0 
+        ? ((totalViews / totalPosts) * 100).toFixed(1) + '%'
+        : '0%';
+
+      setDashboardStats({
+        totalPosts,
+        totalViews,
+        totalUsers: usersData.totalUsers || 0, // Update totalUsers
+        engagementRate
+      });
+
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+    }
+  }, []);
+
+  // Call fetchDashboardStats when component mounts and periodically
+  useEffect(() => {
+    fetchDashboardStats();
+    const interval = setInterval(fetchDashboardStats, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, [fetchDashboardStats]);
+
+  useEffect(() => {
+    if (activeSection === 'overview') {
+      // Fetch the recent 3 blogs (use your preferred back-end approach for limiting)
+      fetch('/api/blogs?limit=3')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            setPosts(data.blogs);
+          }
+        })
+        .catch(err => console.error('Error fetching limited posts:', err));
+    } else if (activeSection === 'posts') {
+      // Use admin endpoint to get all posts including drafts
+      fetch('/api/blogs/admin', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            setPosts(data.blogs);
+          }
+        })
+        .catch(err => console.error('Error fetching all posts:', err));
+    } else if (activeSection === 'users') {
+      fetch('/api/users')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setUsers(data.users);
+          }
+        })
+        .catch((err) => console.error('Error fetching all users:', err));
+    }
+  }, [activeSection]);
+
+  // Add useEffect to fetch analytics
+  useEffect(() => {
+    fetch('/api/blogs/analytics/views', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setAnalytics({
+            totalViews: data.stats?.total?.totalViews || 0,
+            viewsByPost: data.stats?.viewsByPost || [],
+            last30Days: data.stats?.timeRange || []
+          });
+          // Update stats array with real total views
+          stats[1].value = (data.stats?.total?.totalViews || 0).toLocaleString();
+        }
+      })
+      .catch(err => console.error('Error fetching analytics:', err));
+  }, []);
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
   };
 
-  const handleFeaturePost = (postId) => {
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return { ...post, isFeatured: !post.isFeatured };
+  const handleFeaturePost = async (postId) => {
+    try {
+      const response = await fetch(`/api/blogs/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({
+          isFeatured: !posts.find(p => p._id === postId)?.isFeatured
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setPosts(posts.map(post =>
+          post._id === postId ? { ...post, isFeatured: !post.isFeatured } : post
+        ));
       }
-      return post;
-    }));
+    } catch (err) {
+      console.error('Error toggling featured status:', err);
+    }
   };
 
-  const handleDeletePost = (postId) => {
+  const handleDeletePost = async (postId) => {
     if (window.confirm('Are you sure you want to delete this post?')) {
-      setPosts(posts.filter(post => post.id !== postId));
+      try {
+        const response = await fetch(`/api/blogs/${postId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          setPosts(posts.filter(post => post._id !== postId));
+        }
+      } catch (err) {
+        console.error('Error deleting post:', err);
+      }
     }
   };
 
   const handleCardClick = (section) => {
+    setShowAnalytics(false); // Reset analytics view when changing sections
     setActiveSection(section);
     setSearch('');
     setFilter('all');
+  };
+
+  const handleStatClick = (statTitle) => {
+    setShowAnalytics(false); // Reset analytics view first
+    if (statTitle === 'Total Views') {
+      setShowAnalytics(true);
+      setActiveSection('overview'); // Reset active section when showing analytics
+    } else {
+      handleCardClick(statTitle === 'Total Posts' ? 'posts' : statTitle === 'Total Users' ? 'users' : 'overview');
+    }
   };
 
   const renderOverview = () => (
@@ -134,19 +275,19 @@ const Dashboard = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {posts.slice(0, 3).map((post) => (
-                <tr key={post.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <tr key={post._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 max-w-[150px] whitespace-nowrap overflow-hidden text-ellipsis">
                     <div className="font-medium text-gray-900">{post.title}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                    {post.author}
+                    {post.author?.username || 'Unknown'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-500">
                     {post.category}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      post.status === 'Published' 
+                      post.status === 'published'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
@@ -154,15 +295,16 @@ const Dashboard = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                    {post.views.toLocaleString()}
+                    {/* If you track views, display them here */}
+                    {post.views ? post.views.toLocaleString() : 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                    {post.date}
+                    {new Date(post.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex justify-end gap-2">
                       <button 
-                        onClick={() => handleFeaturePost(post.id)}
+                        onClick={() => handleFeaturePost(post._id)}
                         className={`p-1 rounded hover:bg-gray-100 ${
                           post.isFeatured ? 'text-yellow-500' : 'text-gray-400'
                         }`}
@@ -171,14 +313,14 @@ const Dashboard = () => {
                         <Star size={18} className={post.isFeatured ? "fill-current" : ""} />
                       </button>
                       <button 
-                        onClick={() => navigate(`/admin/edit-blog/${post.id}`)}
+                        onClick={() => navigate(`/admin/edit-blog/${post._id}`)}
                         className="p-1 hover:bg-gray-100 rounded"
                         title="Edit post"
                       >
                         <Edit size={18} className="text-gray-600" />
                       </button>
                       <button 
-                        onClick={() => handleDeletePost(post.id)}
+                        onClick={() => handleDeletePost(post._id)}
                         className="p-1 hover:bg-gray-100 rounded"
                         title="Delete post"
                       >
@@ -271,7 +413,7 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {allUsers.map(user => (
+            {users.map(user => (
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
@@ -304,6 +446,34 @@ const Dashboard = () => {
     </div>
   );
 
+  // Update stats array to use real data
+  const statsCards = [
+    { 
+      title: 'Total Posts', 
+      value: dashboardStats.totalPosts?.toString() || '0', 
+      icon: FileText, 
+      change: '+12%' 
+    },
+    { 
+      title: 'Total Views', 
+      value: (dashboardStats.totalViews || 0).toLocaleString(), 
+      icon: Eye, 
+      change: '+8%' 
+    },
+    { 
+      title: 'Total Users', 
+      value: (dashboardStats.totalUsers || 0).toString(), // Use totalUsers
+      icon: Users, 
+      change: '+15%' 
+    },
+    { 
+      title: 'Engagement Rate', 
+      value: dashboardStats.engagementRate || '0%', 
+      icon: TrendingUp, 
+      change: '+3%' 
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
@@ -311,9 +481,12 @@ const Dashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">Dashboard</h1>
-            {activeSection !== 'overview' && (
+            {(activeSection !== 'overview' || showAnalytics) && (
               <button
-                onClick={() => setActiveSection('overview')}
+                onClick={() => {
+                  setActiveSection('overview');
+                  setShowAnalytics(false); // Reset analytics view when going back
+                }}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
                 ← Back to Overview
@@ -333,10 +506,10 @@ const Dashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
+          {statsCards.map((stat, index) => (
             <div
               key={index}
-              onClick={() => handleCardClick(stat.title === 'Total Posts' ? 'posts' : stat.title === 'Total Users' ? 'users' : 'overview')}
+              onClick={() => handleStatClick(stat.title)}
               className={`bg-white p-6 rounded-xl shadow-sm cursor-pointer transition-all
                 ${(stat.title === 'Total Posts' && activeSection === 'posts') ||
                   (stat.title === 'Total Users' && activeSection === 'users')
@@ -358,16 +531,22 @@ const Dashboard = () => {
         </div>
 
         {/* Dynamic Content Section */}
-        {activeSection === 'overview' && renderOverview()}
-        {activeSection === 'posts' && <PostsTable posts={posts} onFeature={handleFeaturePost} onDelete={handleDeletePost} />}
-        {activeSection === 'users' && renderUsersList()}
+        {showAnalytics ? (
+          <ViewAnalytics analytics={analytics} />
+        ) : (
+          <>
+            {activeSection === 'overview' && renderOverview()}
+            {activeSection === 'posts' && <PostsTable posts={posts} onFeature={handleFeaturePost} onDelete={handleDeletePost} navigate={navigate} />}
+            {activeSection === 'users' && renderUsersList()}
+          </>
+        )}
       </div>
     </div>
   );
 };
 
 // Extract PostsTable component from existing posts table code
-const PostsTable = ({ posts, onFeature, onDelete }) => (
+const PostsTable = ({ posts, onFeature, onDelete, navigate }) => (
   <div className="bg-white rounded-xl shadow-sm overflow-hidden mt-8">
     <div className="p-6 border-b">
       <div className="flex items-center justify-between mb-4">
@@ -410,19 +589,19 @@ const PostsTable = ({ posts, onFeature, onDelete }) => (
         </thead>
         <tbody className="divide-y divide-gray-200">
           {posts.map((post) => (
-            <tr key={post.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap">
+            <tr key={post._id} className="hover:bg-gray-50">
+              <td className="px-6 py-4 max-w-[150px] whitespace-nowrap overflow-hidden text-ellipsis">
                 <div className="font-medium text-gray-900">{post.title}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                {post.author}
+                {post.author?.username || 'Unknown'}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-gray-500">
                 {post.category}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 py-1 text-xs rounded-full ${
-                  post.status === 'Published' 
+                  post.status === 'published' 
                     ? 'bg-green-100 text-green-800'
                     : 'bg-yellow-100 text-yellow-800'
                 }`}>
@@ -430,15 +609,15 @@ const PostsTable = ({ posts, onFeature, onDelete }) => (
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                {post.views.toLocaleString()}
+                {(post.views?.total || 0).toLocaleString()}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                {post.date}
+                {new Date(post.createdAt).toLocaleDateString()}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right">
                 <div className="flex justify-end gap-2">
                   <button 
-                    onClick={() => onFeature(post.id)}
+                    onClick={() => onFeature(post._id)}
                     className={`p-1 rounded hover:bg-gray-100 ${
                       post.isFeatured ? 'text-yellow-500' : 'text-gray-400'
                     }`}
@@ -447,14 +626,14 @@ const PostsTable = ({ posts, onFeature, onDelete }) => (
                     <Star size={18} className={post.isFeatured ? "fill-current" : ""} />
                   </button>
                   <button 
-                    onClick={() => navigate(`/admin/edit-blog/${post.id}`)}
+                    onClick={() => navigate(`/admin/edit-blog/${post._id}`)}
                     className="p-1 hover:bg-gray-100 rounded"
                     title="Edit post"
                   >
                     <Edit size={18} className="text-gray-600" />
                   </button>
                   <button 
-                    onClick={() => onDelete(post.id)}
+                    onClick={() => onDelete(post._id)}
                     className="p-1 hover:bg-gray-100 rounded"
                     title="Delete post"
                   >

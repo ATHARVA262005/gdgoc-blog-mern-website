@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Bookmark, TrendingUp, Clock, User, Library, LogIn, LayoutDashboard, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,12 +8,17 @@ const LogoUrl = '/svg/gdgoclogo.svg';
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, isAdmin, logout, adminLogout, isAuthenticated } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await logout();
-      navigate('/login');
+      if (isAdmin) {
+        await adminLogout();
+        navigate('/admin/login');
+      } else {
+        await logout();
+        navigate('/login');
+      }
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -28,16 +33,18 @@ const Sidebar = () => {
   ];
 
   // Items only visible when logged in
-  const privateNavItems = user ? [
-    { icon: Bookmark, label: 'Bookmarks', path: '/bookmarks' },
-    ...(user?.isAdmin ? [{
-      icon: LayoutDashboard,
-      label: 'Dashboard',
-      path: '/admin/dashboard'
-    }] : [])
-  ] : [];
+  const authenticatedItems = [
+    ...(isAdmin ? [
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' }
+    ] : [
+      { icon: Bookmark, label: 'Bookmarks', path: '/bookmarks' }
+    ])
+  ];
 
-  const navItems = [...publicNavItems, ...privateNavItems];
+  const navItems = [
+    ...publicNavItems,
+    ...(isAuthenticated ? authenticatedItems : [])
+  ];
 
   return (
     <div className="w-64 h-screen bg-white border-r fixed left-0 top-0">
@@ -64,7 +71,7 @@ const Sidebar = () => {
 
         {/* Authentication Links */}
         <div className="mt-auto pt-6 border-t">
-          {!user ? (
+          {!isAuthenticated ? (
             <>
               <Link
                 to="/login"
@@ -83,13 +90,16 @@ const Sidebar = () => {
             </>
           ) : (
             <>
-              <Link
-                to="/profile"
-                className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-blue-50"
-              >
-                <User size={20} />
-                <span>Profile</span>
-              </Link>
+              {/* Only show profile link for regular users */}
+              {!isAdmin && (
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-blue-50"
+                >
+                  <User size={20} />
+                  <span>Profile</span>
+                </Link>
+              )}
               <button
                 onClick={handleLogout}
                 className="flex w-full items-center gap-3 px-4 py-3 mt-2 rounded-lg transition-colors text-red-600 hover:bg-red-50"

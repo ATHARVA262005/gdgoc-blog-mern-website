@@ -5,26 +5,15 @@ import { ArrowLeft, Upload, Save, Send, Loader } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const defaultCategories = [
-  'Development',
-  'Artificial Intelligence',
-  'UI/UX Design',
-  'DevOps',
-  'Cloud Computing',
   'Web Development',
   'Mobile Development',
-  'Machine Learning',
-  'Cybersecurity',
-  'Blockchain',
-  'Data Science',
-  'Frontend',
-  'Backend',
-  'Full Stack',
+  'DevOps & Cloud',
+  'Data Science & AI',
   'Programming Languages',
   'Software Architecture',
-  'Best Practices',
-  'Tutorials',
-  'Career Growth',
-  'Tech News'
+  'Cybersecurity',
+  'System Design',
+  'Other'
 ];
 
 const EditBlog = () => {
@@ -32,9 +21,9 @@ const EditBlog = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [categories, setCategories] = useState(defaultCategories);
-  const [newCategory, setNewCategory] = useState('');
+  const [error, setError] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -44,7 +33,6 @@ const EditBlog = () => {
   const [featuredImage, setFeaturedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [status, setStatus] = useState('draft');
-  const [isFeatured, setIsFeatured] = useState(false);
 
   // Editor configuration
   const modules = {
@@ -84,26 +72,37 @@ const EditBlog = () => {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        // Replace with actual API call
-        const response = await fetch(`/api/blogs/${id}`);
-        const blog = await response.json();
+        const response = await fetch(`/api/blogs/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          }
+        });
         
-        setTitle(blog.title);
-        setContent(blog.content);
-        setCategory(blog.category);
-        setTags(blog.tags.join(', '));
-        setStatus(blog.status);
-        setIsFeatured(blog.isFeatured);
-        setImagePreview(blog.featuredImage);
-        
+        if (!response.ok) {
+          throw new Error('Failed to fetch blog');
+        }
+  
+        const data = await response.json();
+        if (data.success) {
+          const blog = data.blog;
+          setTitle(blog.title);
+          setContent(blog.content);
+          setCategory(blog.category);
+          setTags(blog.tags.join(', '));
+          setStatus(blog.status);
+          setImagePreview(blog.featuredImage);
+        }
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching blog:', error);
-        // Show error notification
-        navigate('/admin/dashboard');
+        setError('Error fetching blog');
+        // Don't navigate away immediately, show the error first
+        setTimeout(() => {
+          navigate('/admin/dashboard');
+        }, 3000);
       }
     };
-
+  
     fetchBlog();
   }, [id, navigate]);
 
@@ -123,45 +122,39 @@ const EditBlog = () => {
     setContent(content);
   }, []);
 
-  const handleAddCategory = (e) => {
-    e.preventDefault();
-    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      setCategories([...categories, newCategory.trim()]);
-      setCategory(newCategory.trim());
-      setNewCategory('');
-      setShowNewCategoryInput(false);
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault(); // Just prevent form submission
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleUpdateStatus = async (newStatus) => {
     setIsSaving(true);
-
     try {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('content', content);
-      formData.append('category', category);
-      formData.append('tags', JSON.stringify(tags.split(',').map(tag => tag.trim())));
-      formData.append('status', status);
-      formData.append('isFeatured', isFeatured);
-      if (featuredImage) {
-        formData.append('featuredImage', featuredImage);
-      }
-
-      // Replace with your API endpoint
+      // Include all current blog data along with new status
       const response = await fetch(`/api/blogs/${id}`, {
         method: 'PUT',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          category,
+          tags: tags.split(',').map(tag => tag.trim()),
+          featuredImage: imagePreview, // Use current image
+          status: newStatus
+        })
       });
 
       if (!response.ok) throw new Error('Failed to update blog');
 
-      // Show success notification
-      navigate('/admin/dashboard');
+      const data = await response.json();
+      if (data.success) {
+        setStatus(newStatus);
+        setShowNotification(true);
+      }
     } catch (error) {
-      console.error('Error updating blog:', error);
-      // Show error notification
+      setError('Error updating blog status');
     } finally {
       setIsSaving(false);
     }
@@ -192,27 +185,68 @@ const EditBlog = () => {
           </button>
           <div className="flex gap-3">
             <button
-              onClick={() => setStatus('draft')}
+              onClick={() => handleUpdateStatus('draft')}
               disabled={isSaving}
               type="button"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:border-gray-400
-                ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                status === 'draft' 
+                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                  : 'border border-gray-300 hover:border-gray-400'
+              }`}
             >
               <Save size={20} />
-              Save Draft
+              Save as Draft
             </button>
             <button
-              onClick={() => setStatus('published')}
+              onClick={() => handleUpdateStatus('published')}
               disabled={isSaving}
               type="button"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700
-                ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                status === 'published'
+                  ? 'bg-green-100 text-green-800 border border-green-300'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
               <Send size={20} />
-              {isSaving ? 'Saving...' : 'Update & Publish'}
+              {isSaving ? 'Saving...' : 'Publish'}
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="fixed top-4 right-4 bg-red-100 text-red-800 py-2 px-4 rounded-lg shadow">
+            {error}
+            <button
+              className="ml-2 text-sm text-red-800 hover:opacity-75"
+              onClick={() => setError('')}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {showNotification && (
+          <div className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow ${
+            status === 'published' 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            {status === 'published' ? 'Post Published!' : 'Post Saved as Draft'}
+            <button
+              className={`ml-2 text-sm hover:opacity-75 ${
+                status === 'published' 
+                  ? 'text-green-800' 
+                  : 'text-yellow-800'
+              }`}
+              onClick={() => {
+                setShowNotification(false);
+                navigate('/admin/dashboard');
+              }}
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title Input */}
@@ -224,27 +258,6 @@ const EditBlog = () => {
               placeholder="Blog Title"
               className="w-full px-4 py-3 text-xl font-bold border-0 border-b-2 border-gray-200 focus:border-blue-600 focus:ring-0 bg-transparent"
             />
-          </div>
-
-          {/* Featured Post Toggle */}
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border">
-            <div>
-              <h3 className="font-medium text-gray-900">Featured Post</h3>
-              <p className="text-sm text-gray-500">
-                Featured posts appear prominently on the home page (600x400 thumbnail)
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsFeatured(!isFeatured)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
-                ${isFeatured ? 'bg-blue-600' : 'bg-gray-200'}`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  ${isFeatured ? 'translate-x-6' : 'translate-x-1'}`}
-              />
-            </button>
           </div>
 
           {/* Featured Image */}
@@ -266,18 +279,12 @@ const EditBlog = () => {
                 >
                   ×
                 </button>
-                {isFeatured && (
-                  <div className="mt-2 text-sm text-gray-500">
-                    Recommended size for featured posts: 600x400 pixels
-                  </div>
-                )}
               </div>
             ) : (
               <label className="cursor-pointer block">
                 <Upload className="mx-auto mb-2" size={24} />
                 <span className="text-gray-600">
                   Upload Featured Image
-                  {isFeatured && " (Recommended: 600x400px)"}
                 </span>
                 <input
                   type="file"
@@ -308,54 +315,18 @@ const EditBlog = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category
               </label>
-              {showNewCategoryInput ? (
-                <div className="space-y-2">
-                  <form onSubmit={handleAddCategory} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      placeholder="Enter new category"
-                      className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Add
-                    </button>
-                  </form>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCategoryInput(false)}
-                    className="text-sm text-gray-600 hover:text-gray-800"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.sort().map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCategoryInput(true)}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    + Add New Category
-                  </button>
-                </div>
-              )}
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Category</option>
+                {defaultCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

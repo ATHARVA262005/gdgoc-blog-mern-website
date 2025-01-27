@@ -1,79 +1,90 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
-  // Load user data from localStorage on initial mount
   useEffect(() => {
+    // Check for token in localStorage
     const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (token && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-      }
+    if (token) {
+      // Verify token and fetch user data
+      verifyToken(token);
     }
     setLoading(false);
   }, []);
 
-  // Add this useEffect to check token expiration
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      
-      if (!token || !storedUser) {
-        setUser(null);
-        return;
-      }
-
-      try {
-        // Parse the JWT to check expiration
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp * 1000 < Date.now()) {
-          // Token has expired
-          logout();
-          return;
+  const verifyToken = async (token) => {
+    try {
+      // Make API call to verify token and get user data
+      const response = await fetch('/api/verify-token', {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Auth state error:', error);
-        logout();
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        setIsAdmin(userData.isAdmin || false);
+        setIsAuthenticated(true);
+      } else {
+        // If token is invalid, clear everything
+        localStorage.removeItem('token');
+        setUser(null);
+        setIsAdmin(false);
+        setIsAuthenticated(false);
       }
-    };
+    } catch (error) {
+      console.error('Token verification failed:', error);
+    }
+  };
 
-    checkAuth();
-    setLoading(false);
-  }, []);
+  const adminLogin = () => {
+    console.log('Setting admin status...');
+    setIsAdmin(true);
+  };
+
+  const adminLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('adminToken');
+    navigate('/admin/login');
+  };
 
   const login = (userData, token) => {
     setUser(userData);
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    setIsAuthenticated(true);
   };
 
   const logout = () => {
     setUser(null);
+    setIsAdmin(false);
+    setIsAuthenticated(false);
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('adminToken');
     navigate('/login');
   };
 
-  if (loading) {
-    return <div>Loading...</div>; // Or your loading component
-  }
+  const value = {
+    user,
+    isAdmin,
+    isAuthenticated,
+    loading,
+    login,
+    logout,
+    adminLogin,
+    adminLogout
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

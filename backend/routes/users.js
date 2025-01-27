@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
 
@@ -13,9 +14,22 @@ router.get('/profile/:userId', auth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // Include onboarding status in response
+    const userData = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      bio: user.bio,
+      onboarded: user.onboarded,
+      socialLinks: user.socialLinks,
+      profileImage: user.profileImage,
+      createdAt: user.createdAt
+    };
     
-    res.json(user);
+    res.json(userData);
   } catch (error) {
+    console.error('Profile fetch error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -66,6 +80,15 @@ router.patch('/:userId/profile', auth, async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Handle twitter to x migration
+    if (socialLinks) {
+      // If twitter link is provided and no x link exists, move it to x
+      if (socialLinks.twitter && !socialLinks.x) {
+        socialLinks.x = socialLinks.twitter;
+        delete socialLinks.twitter;
+      }
     }
 
     // Update fields if provided
@@ -119,6 +142,23 @@ router.get('/:userId/comments', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching comments:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get total number of users (admin only)
+router.get('/', adminAuth, async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    res.json({
+      success: true,
+      totalUsers
+    });
+  } catch (error) {
+    console.error('Error fetching total users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching total users'
+    });
   }
 });
 

@@ -9,7 +9,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave, userData }) => {
     socialLinks: {
       website: userData?.socialLinks?.website || '',
       github: userData?.socialLinks?.github || '',
-      twitter: userData?.socialLinks?.twitter || '',
+      x: userData?.socialLinks?.x || '', // Updated from twitter to x
       linkedin: userData?.socialLinks?.linkedin || ''
     }
   });
@@ -19,27 +19,24 @@ const EditProfileModal = ({ isOpen, onClose, onSave, userData }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    // Name validation
+    // Basic validations remain required
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
     } else if (formData.name.length < 2) {
       newErrors.name = 'Name must be at least 2 characters';
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!emailRegex.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
 
-    // Bio validation
     if (formData.bio && formData.bio.length > 500) {
       newErrors.bio = 'Bio must be less than 500 characters';
     }
 
-    // URL validations
+    // URL validations - only if URL is provided
     const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
     Object.entries(formData.socialLinks).forEach(([key, value]) => {
       if (value && !urlRegex.test(value)) {
@@ -155,18 +152,18 @@ const EditProfileModal = ({ isOpen, onClose, onSave, userData }) => {
 
           {/* Social Links */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Social Links</h3>
+            <h3 className="text-lg font-medium">Social Links (Optional)</h3>
             {Object.entries(formData.socialLinks).map(([platform, value]) => (
               <div key={platform}>
                 <label className="block text-sm font-medium text-gray-700 capitalize">
-                  {platform}
+                  {platform === 'x' ? 'X (formerly Twitter)' : platform}
                 </label>
                 <input
                   type="url"
                   name={`socialLinks.${platform}`}
                   value={value}
                   onChange={handleChange}
-                  placeholder={`https://${platform}.com/username`}
+                  placeholder={`https://${platform === 'x' ? 'x.com' : platform + '.com'}/username (optional)`}
                   className={`mt-1 block w-full rounded-md border ${
                     errors[`socialLinks.${platform}`] ? 'border-red-500' : 'border-gray-300'
                   } px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}

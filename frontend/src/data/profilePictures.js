@@ -1,6 +1,6 @@
 export const profilePictures = [
     {
-    url: "",
+    url: "https://placehold.co/400x400/3B82F6/FFFFFF", // Added missing URL for The Explorer
     name: "The Explorer",
     description: "Curious and adventurous reader who loves discovering new topics"
     },

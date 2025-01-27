@@ -1,27 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ThumbsUp, MessageCircle, Bookmark, Library, ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
-
-// Generate more sample blogs for pagination
-const allBlogs = Array.from({ length: 24 }, (_, i) => ({
-  id: i + 1,
-  title: `Blog Post ${i + 1}`,
-  excerpt: "This is a sample blog post excerpt that demonstrates the layout and design of our blog cards...",
-  author: "John Doe",
-  authorImage: "https://placehold.co/100x100",
-  date: "Jan 15, 2025",
-  likes: Math.floor(Math.random() * 1000) + 100,
-  comments: Math.floor(Math.random() * 100) + 10,
-  category: ["Development", "AI", "Design", "DevOps"][Math.floor(Math.random() * 4)],
-  image: "https://placehold.co/600x400"
-}));
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ThumbsUp, MessageCircle, Bookmark, Library, ChevronLeft, ChevronRight, Search, ArrowUpDown, BookmarkCheck, Clock } from 'lucide-react';
+import axios from 'axios';
+import { getBookmarksStatus, toggleBookmark, getLikesStatus, toggleLike } from '../services/blogService';
+import Toast from '../components/Toast';
+import BlogCard from '../components/BlogCard';
 
 const ITEMS_PER_PAGE = 9;
 
-// Add categories array
-const categories = ["All", "Development", "AI", "Design", "DevOps"];
+const categories = [
+  "All",
+  'Web Development',
+  'Mobile Development',
+  'DevOps & Cloud',
+  'Data Science & AI',
+  'Programming Languages',
+  'Software Architecture',
+  'Cybersecurity',
+  'System Design',
+  'Other'
+];
 
-// Add sorting options
 const sortOptions = [
   { label: 'Newest First', value: 'newest' },
   { label: 'Oldest First', value: 'oldest' },
@@ -30,13 +29,46 @@ const sortOptions = [
 ];
 
 const TreasureBlogs = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState('newest');
+  const [blogs, setBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [bookmarks, setBookmarks] = useState({});
+  const [likes, setLikes] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  // Set initial search query from URL params
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('http://localhost:5000/api/blogs');
+        if (response.data.success) {
+          setBlogs(response.data.blogs);
+          const blogIds = response.data.blogs.map(blog => blog._id);
+          const [bookmarkStatuses, likeStatuses] = await Promise.all([
+            getBookmarksStatus(blogIds),
+            getLikesStatus(blogIds)
+          ]);
+          setBookmarks(bookmarkStatuses);
+          setLikes(likeStatuses);
+          setError(null);
+        }
+      } catch (err) {
+        setError('Failed to fetch blogs. Please try again later.');
+        console.error('Error fetching blogs:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlogs();
+  }, []);
+
   useEffect(() => {
     const searchFromUrl = searchParams.get('search');
     if (searchFromUrl) {
@@ -44,22 +76,21 @@ const TreasureBlogs = () => {
     }
   }, [searchParams]);
 
-  // Filter and sort blogs
-  const filteredBlogs = allBlogs.filter(blog => {
+  const filteredBlogs = blogs.filter(blog => {
     const matchesSearch = blog.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         blog.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+                         blog.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || blog.category === selectedCategory;
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
     switch (sortBy) {
       case 'oldest':
-        return new Date(a.date) - new Date(b.date);
+        return new Date(a.createdAt) - new Date(b.createdAt);
       case 'likes':
-        return b.likes - a.likes;
+        return (b.views?.total || 0) - (a.views?.total || 0);
       case 'comments':
-        return b.comments - a.comments;
-      default: // newest
-        return new Date(b.date) - new Date(a.date);
+        return (b.views?.unique || 0) - (a.views?.unique || 0);
+      default:
+        return new Date(b.createdAt) - new Date(a.createdAt);
     }
   });
 
@@ -67,18 +98,108 @@ const TreasureBlogs = () => {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const currentBlogs = filteredBlogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+  const handleBlogClick = (blogId) => {
+    navigate(`/blog/${blogId}`);
+  };
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
+  const handleBookmarkToggle = async (blogId, e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Stop event from bubbling to parent
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('Please login to bookmark posts', 'error');
+      navigate('/login');
+      return;
+    }
+    try {
+      const response = await toggleBookmark(blogId);
+      if (response.success) {
+        setBookmarks(prev => ({
+          ...prev,
+          [blogId]: response.isBookmarked
+        }));
+        showToast(response.message);
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      showToast('Failed to update bookmark', 'error');
+    }
+  };
+
+  const handleLikeToggle = async (blogId, e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Stop event from bubbling to parent
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('Please login to like posts', 'error');
+      navigate('/login');
+      return;
+    }
+    try {
+      const response = await toggleLike(blogId);
+      if (response.success) {
+        setLikes(prev => ({
+          ...prev,
+          [blogId]: response.isLiked
+        }));
+        setBlogs(prev => prev.map(blog => 
+          blog._id === blogId 
+            ? { ...blog, stats: { ...blog.stats, likeCount: response.likeCount } }
+            : blog
+        ));
+        showToast(response.message);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      showToast('Failed to update like', 'error');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading blogs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {toast.show && (
+        <Toast 
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ show: false, message: '', type: 'success' })}
+        />
+      )}
       <div className="px-8 py-12">
         <div className="flex items-center gap-3 mb-8">
           <Library className="text-blue-600" size={32} />
           <h1 className="text-3xl font-bold">Blog Treasure</h1>
         </div>
         
-        {/* Search and Filter Section */}
         <div className="mb-8 space-y-4">
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search Bar */}
             <div className="relative flex-1">
               <input
                 type="text"
@@ -86,14 +207,13 @@ const TreasureBlogs = () => {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setCurrentPage(1); // Reset to first page on search
+                  setCurrentPage(1);
                 }}
                 className="w-full px-4 py-2 pl-10 pr-4 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             </div>
 
-            {/* Sort Dropdown */}
             <div className="relative min-w-[200px]">
               <select
                 value={sortBy}
@@ -110,14 +230,13 @@ const TreasureBlogs = () => {
             </div>
           </div>
 
-          {/* Category Filter */}
           <div className="flex gap-2 flex-wrap">
             {categories.map(category => (
               <button
                 key={category}
                 onClick={() => {
                   setSelectedCategory(category);
-                  setCurrentPage(1); // Reset to first page on filter change
+                  setCurrentPage(1);
                 }}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   selectedCategory === category
@@ -131,52 +250,26 @@ const TreasureBlogs = () => {
           </div>
         </div>
 
-        {/* Blog Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           {currentBlogs.map(blog => (
-            <div key={blog.id} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
-              <div className="relative h-48 overflow-hidden">
-                <img src={blog.image} alt={blog.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
-                <button className="absolute top-4 right-4 p-2 bg-white/30 backdrop-blur-sm rounded-full hover:bg-white/50 transition-colors">
-                  <Bookmark size={20} className="text-white" />
-                </button>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <img src={blog.authorImage} alt={blog.author} className="w-8 h-8 rounded-full" />
-                  <div>
-                    <p className="font-medium text-sm">{blog.author}</p>
-                    <p className="text-xs text-gray-500">{blog.date}</p>
-                  </div>
-                </div>
-                <h3 className="font-bold text-xl mb-2 line-clamp-2">{blog.title}</h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{blog.excerpt}</p>
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600">{blog.category}</span>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <ThumbsUp size={16} />
-                      <span>{blog.likes}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageCircle size={16} />
-                      <span>{blog.comments}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BlogCard
+              key={blog._id}
+              blog={blog}
+              isLiked={likes[blog._id]}
+              isBookmarked={bookmarks[blog._id]}
+              onLike={(e) => handleLikeToggle(blog._id, e)}
+              onBookmark={(e) => handleBookmarkToggle(blog._id, e)}
+              onClick={() => handleBlogClick(blog._id)}
+            />
           ))}
         </div>
 
-        {/* Show message if no results */}
         {currentBlogs.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No blogs found matching your criteria</p>
           </div>
         )}
 
-        {/* Pagination */}
         {filteredBlogs.length > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-center gap-4">
             <button 
