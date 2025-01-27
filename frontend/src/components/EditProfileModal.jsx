@@ -89,73 +89,78 @@ const EditProfileModal = ({ isOpen, onClose, onSave, userData }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Edit Profile</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 pt-10 pb-28">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white p-4 sm:p-6 border-b flex justify-between items-center">
+          <h2 className="text-lg sm:text-xl font-semibold">Edit Profile</h2>
+          <button 
+            onClick={onClose} 
+            className="p-1 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+          >
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Basic Info */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Basic Information</h3>
+            <h3 className="text-base sm:text-lg font-medium">Basic Information</h3>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700">Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border ${
+                className={`mt-1 block w-full rounded-lg border ${
                   errors.name ? 'border-red-500' : 'border-gray-300'
-                } px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
+                } px-3 py-2 sm:py-2.5 text-sm sm:text-base focus:border-blue-500 focus:ring-blue-500`}
               />
-              {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+              {errors.name && <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.name}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border ${
+                className={`mt-1 block w-full rounded-lg border ${
                   errors.email ? 'border-red-500' : 'border-gray-300'
-                } px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
+                } px-3 py-2 sm:py-2.5 text-sm sm:text-base focus:border-blue-500 focus:ring-blue-500`}
               />
-              {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+              {errors.email && <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.email}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Bio</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
               <textarea
                 name="bio"
                 value={formData.bio}
                 onChange={handleChange}
                 rows={3}
-                className={`mt-1 block w-full rounded-md border ${
+                className={`mt-1 block w-full rounded-lg border ${
                   errors.bio ? 'border-red-500' : 'border-gray-300'
-                } px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
+                } px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-blue-500`}
                 placeholder="Tell us about yourself..."
               />
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-xs sm:text-sm text-gray-500">
                 {formData.bio.length}/500 characters
               </p>
-              {errors.bio && <p className="mt-1 text-sm text-red-500">{errors.bio}</p>}
+              {errors.bio && <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.bio}</p>}
             </div>
           </div>
 
           {/* Social Links */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Social Links (Optional)</h3>
+            <h3 className="text-base sm:text-lg font-medium">Social Links (Optional)</h3>
             {Object.entries(formData.socialLinks).map(([platform, value]) => (
               <div key={platform}>
-                <label className="block text-sm font-medium text-gray-700 capitalize">
+                <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
                   {platform === 'x' ? 'X (formerly Twitter)' : platform}
                 </label>
                 <input
@@ -164,12 +169,12 @@ const EditProfileModal = ({ isOpen, onClose, onSave, userData }) => {
                   value={value}
                   onChange={handleChange}
                   placeholder={`https://${platform === 'x' ? 'x.com' : platform + '.com'}/username (optional)`}
-                  className={`mt-1 block w-full rounded-md border ${
+                  className={`mt-1 block w-full rounded-lg border ${
                     errors[`socialLinks.${platform}`] ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
+                  } px-3 py-2 sm:py-2.5 text-sm sm:text-base focus:border-blue-500 focus:ring-blue-500`}
                 />
                 {errors[`socialLinks.${platform}`] && (
-                  <p className="mt-1 text-sm text-red-500">{errors[`socialLinks.${platform}`]}</p>
+                  <p className="mt-1 text-xs sm:text-sm text-red-500">{errors[`socialLinks.${platform}`]}</p>
                 )}
               </div>
             ))}
@@ -177,15 +182,15 @@ const EditProfileModal = ({ isOpen, onClose, onSave, userData }) => {
 
           {/* Error Message */}
           {errors.submit && (
-            <p className="text-sm text-red-500 text-center">{errors.submit}</p>
+            <p className="text-xs sm:text-sm text-red-500 text-center">{errors.submit}</p>
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-4 pt-4 border-t">
+          <div className="flex justify-end gap-3 sm:gap-4 pt-4 border-t mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="px-3 sm:px-4 py-2 text-sm sm:text-base text-gray-700 hover:bg-gray-100 rounded-lg"
               disabled={isSubmitting}
             >
               Cancel
@@ -193,11 +198,11 @@ const EditProfileModal = ({ isOpen, onClose, onSave, userData }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 flex items-center gap-2 text-sm sm:text-base"
             >
               {isSubmitting ? (
                 <>
-                  <Loader className="animate-spin" size={16} />
+                  <Loader className="animate-spin w-4 h-4 sm:w-5 sm:h-5" />
                   <span>Saving...</span>
                 </>
               ) : (

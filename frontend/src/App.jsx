@@ -82,7 +82,7 @@ const AppLayout = () => {
   return (
     <div className="flex">
       {showSidebar && <Sidebar />}
-      <main className={`flex-1 ${showSidebar ? 'ml-64' : ''}`}>
+      <main className={`flex-1 ${showSidebar ? 'ml-0 md:ml-64 mb-8 md:mb-0' : ''}`}>
         <Routes>
           {/* Public Auth Routes */}
           <Route path="/login" element={

@@ -6,28 +6,31 @@ import BlogCard from '../components/BlogCard';
 import { blogApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-const FeaturedPost = ({ post }) => (
-  <div className="relative h-[500px] group cursor-pointer overflow-hidden rounded-xl">
+const FeaturedPost = ({ post, onClick }) => (
+  <div 
+    onClick={() => onClick(post._id)}
+    className="relative h-[300px] sm:h-[400px] lg:h-[500px] group cursor-pointer overflow-hidden rounded-xl"
+  >
     <img 
       src={post.featuredImage || 'https://placehold.co/600x400'} 
       alt={post.title} 
       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
     />
     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black/80">
-      <div className="absolute bottom-0 p-8">
-        <span className="text-sm font-medium px-3 py-1 rounded-full bg-blue-600 text-white">
+      <div className="absolute bottom-0 p-4 sm:p-6 lg:p-8">
+        <span className="text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full bg-blue-600 text-white">
           {post.category}
         </span>
-        <h2 className="text-3xl font-bold text-white mt-4 mb-2">{post.title}</h2>
-        <div className="flex items-center gap-4 text-white/80">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mt-2 sm:mt-4 mb-2">{post.title}</h2>
+        <div className="flex items-center gap-2 sm:gap-4 text-white/80">
           <img 
             src={post.author?.profileImage || '/images/profile_administrator.webp'} 
             alt={post.author?.username} 
-            className="w-10 h-10 rounded-full" 
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full" 
           />
           <div>
-            <p className="font-medium">{post.author?.username || 'Anonymous'}</p>
-            <p className="text-sm">
+            <p className="font-medium text-sm sm:text-base">{post.author?.username || 'Anonymous'}</p>
+            <p className="text-xs sm:text-sm">
               {new Date(post.createdAt).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
@@ -98,7 +101,7 @@ const SearchBar = () => {
   );
 };
 
-const FeaturedCarousel = ({ posts }) => {
+const FeaturedCarousel = ({ posts, onPostClick }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -119,7 +122,10 @@ const FeaturedCarousel = ({ posts }) => {
 
   return (
     <div className="relative group">
-      <FeaturedPost post={posts[currentIndex]} />
+      <FeaturedPost 
+        post={posts[currentIndex]} 
+        onClick={onPostClick}
+      />
       
       {/* Carousel Indicators */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
@@ -340,26 +346,36 @@ const Home = () => {
   const recommendedBlogs = getRecommendedBlogs(blogs, userPreferences);
   const latestBlogs = getLatestBlogs(blogs);
 
+  const handleFeaturedPostClick = (blogId) => {
+    navigate(`/blog/${blogId}`);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="px-8 py-12">
+    <div className="min-h-screen bg-gray-50 ">
+      <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 mb-8 md:mb-0">
         <SearchBar />
         
-        <div className="mb-16">
+        <div className="mb-8 sm:mb-12 lg:mb-16">
           {featuredBlogs.length > 0 ? (
-            <FeaturedCarousel posts={featuredBlogs} />
+            <FeaturedCarousel 
+              posts={featuredBlogs} 
+              onPostClick={handleFeaturedPostClick}
+            />
           ) : (
-            <FeaturedCarousel posts={trendingBlogs.slice(0, 3)} />
+            <FeaturedCarousel 
+              posts={trendingBlogs.slice(0, 3)} 
+              onPostClick={handleFeaturedPostClick}
+            />
           )}
         </div>
 
         {/* Recommended Posts Section */}
-        <section className="mb-16">
+        <section className="mb-8 sm:mb-12 lg:mb-16">
           <SectionTitle 
             title={getRecommendationTitle()}
             onViewAll={handleViewAll}
           />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {recommendedBlogs.map(blog => (
               <BlogCard
                 key={blog._id}
@@ -375,12 +391,12 @@ const Home = () => {
         </section>
 
         {/* Latest Posts Section */}
-        <section className="mb-16">
+        <section className="mb-8 sm:mb-12 lg:mb-16">
           <SectionTitle 
             title="Latest Posts" 
             onViewAll={handleViewAll}
           />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {latestBlogs.map(blog => (
               <BlogCard
                 key={blog._id}

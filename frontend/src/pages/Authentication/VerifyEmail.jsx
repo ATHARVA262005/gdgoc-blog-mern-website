@@ -97,22 +97,25 @@ const VerifyEmail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-center text-3xl font-bold text-gray-900">Verify your email</h2>
-        <p className="mt-2 text-center text-gray-600 text-lg">
-          We've sent a verification code to {email}
+        <h2 className="text-center text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+          Verify your email
+        </h2>
+        <p className="mt-2 text-center text-gray-600 text-base sm:text-lg px-2">
+          We've sent a verification code to{' '}
+          <span className="font-medium break-all">{email}</span>
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl sm:rounded-lg sm:px-10">
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="mt-6 sm:mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-6 sm:py-8 px-4 shadow-xl sm:rounded-lg sm:px-10">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
+              <label className="block text-sm sm:text-base font-medium text-gray-700 mb-3 sm:mb-4 text-center">
                 Enter verification code
               </label>
-              <div className="flex gap-2 justify-center">
+              <div className="flex gap-1.5 sm:gap-2 justify-center">
                 {otp.map((digit, index) => (
                   <input
                     key={index}
@@ -122,21 +125,23 @@ const VerifyEmail = () => {
                     ref={(el) => (inputRefs.current[index] = el)}
                     onChange={(e) => handleChange(e.target.value, index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
-                    className="w-12 h-12 text-center text-xl font-semibold border-2 rounded-lg focus:border-blue-500 focus:ring-blue-500"
+                    className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg sm:text-xl font-semibold border-2 rounded-lg focus:border-blue-500 focus:ring-blue-500"
                   />
                 ))}
               </div>
             </div>
 
             {error && (
-              <p className="text-red-600 text-sm text-center">{error}</p>
+              <p className="text-red-600 text-xs sm:text-sm text-center mt-2">
+                {error}
+              </p>
             )}
 
             <div>
               <button
                 type="submit"
                 disabled={loading || otp.some(digit => !digit)}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm sm:text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Verifying...' : 'Verify Email'}
               </button>
@@ -147,7 +152,7 @@ const VerifyEmail = () => {
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendDisabled}
-                className="text-sm font-medium text-blue-600 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {resendDisabled 
                   ? `Resend code in ${countdown}s` 
@@ -156,12 +161,12 @@ const VerifyEmail = () => {
             </div>
           </form>
 
-          <div className="mt-6">
+          <div className="mt-4 sm:mt-6">
             <Link
               to="/login"
-              className="flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500"
+              className="flex items-center justify-center text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-500 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
               Back to login
             </Link>
           </div>

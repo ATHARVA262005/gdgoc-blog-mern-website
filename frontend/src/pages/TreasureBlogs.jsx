@@ -192,15 +192,18 @@ const TreasureBlogs = () => {
           onClose={() => setToast({ show: false, message: '', type: 'success' })}
         />
       )}
-      <div className="px-8 py-12">
-        <div className="flex items-center gap-3 mb-8">
-          <Library className="text-blue-600" size={32} />
-          <h1 className="text-3xl font-bold">Blog Treasure</h1>
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Header - Made more compact on mobile */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-6 lg:mb-8">
+          <Library className="text-blue-600" size={24} sm={28} lg={32} />
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Blog Treasure</h1>
         </div>
         
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
+        {/* Search and Filter Section - Improved mobile layout */}
+        <div className="mb-4 sm:mb-6 lg:mb-8 space-y-3 sm:space-y-4">
+          {/* Search and Sort Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="relative sm:col-span-3">
               <input
                 type="text"
                 placeholder="Search blogs..."
@@ -209,16 +212,16 @@ const TreasureBlogs = () => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full px-4 py-2 pl-10 pr-4 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-4 py-2 pl-10 pr-4 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base"
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             </div>
 
-            <div className="relative min-w-[200px]">
+            <div className="relative">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-4 py-2 pr-10 appearance-none rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
+                className="w-full px-3 sm:px-4 py-2 pr-8 sm:pr-10 appearance-none rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer text-sm sm:text-base"
               >
                 {sortOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -226,11 +229,29 @@ const TreasureBlogs = () => {
                   </option>
                 ))}
               </select>
-              <ArrowUpDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+              <ArrowUpDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
             </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
+          {/* Categories - Select on mobile, buttons on larger screens */}
+          <div className="block sm:hidden">
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full px-3 py-2 pr-8 appearance-none rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer text-sm"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category === 'All' ? 'All Categories' : category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hidden sm:flex sm:flex-wrap gap-2">
             {categories.map(category => (
               <button
                 key={category}
@@ -238,11 +259,11 @@ const TreasureBlogs = () => {
                   setSelectedCategory(category);
                   setCurrentPage(1);
                 }}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  selectedCategory === category
+                className={`px-3 py-1.5 rounded-lg transition-colors text-sm
+                  ${selectedCategory === category
                     ? 'bg-blue-600 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 {category}
               </button>
@@ -250,7 +271,8 @@ const TreasureBlogs = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+        {/* Blog Grid - Adjusted gaps and padding */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           {currentBlogs.map(blog => (
             <BlogCard
               key={blog._id}
@@ -264,32 +286,36 @@ const TreasureBlogs = () => {
           ))}
         </div>
 
+        {/* Empty State - Adjusted padding */}
         {currentBlogs.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No blogs found matching your criteria</p>
+          <div className="text-center py-6 sm:py-8 lg:py-12">
+            <p className="text-gray-500 text-sm sm:text-base lg:text-lg">
+              No blogs found matching your criteria
+            </p>
           </div>
         )}
 
+        {/* Pagination - More compact on mobile */}
         {filteredBlogs.length > ITEMS_PER_PAGE && (
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-1 sm:gap-2">
             <button 
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+              className="p-1 sm:p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
             </button>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {Array.from({ length: totalPages }, (_, i) => (
                 <button
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`w-8 h-8 rounded-lg transition-colors ${
-                    currentPage === i + 1 
+                  className={`w-6 h-6 sm:w-8 sm:h-8 text-xs sm:text-sm rounded-lg transition-colors
+                    ${currentPage === i + 1 
                       ? 'bg-blue-600 text-white' 
                       : 'hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>
@@ -299,9 +325,9 @@ const TreasureBlogs = () => {
             <button 
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+              className="p-1 sm:p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
             >
-              <ChevronRight size={20} />
+              <ChevronRight size={16} className="sm:w-5 sm:h-5" />
             </button>
           </div>
         )}

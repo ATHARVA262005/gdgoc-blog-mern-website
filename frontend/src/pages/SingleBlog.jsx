@@ -345,7 +345,7 @@ const SingleBlog = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-6 lg:py-8 overflow-hidden">
       {/* Add Toast component */}
       {toast.show && (
         <Toast 
@@ -355,48 +355,48 @@ const SingleBlog = () => {
         />
       )}
 
-      <article className="max-w-4xl mx-auto px-4">
+      <article className="w-full max-w-[95%] sm:max-w-[90%] lg:max-w-4xl mx-auto">
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-8 group transition-colors"
+          className="inline-flex items-center gap-1 sm:gap-2 text-gray-600 hover:text-blue-600 mb-4 sm:mb-6 lg:mb-8 text-sm sm:text-base group transition-colors"
         >
-          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft size={16} className="sm:w-5 sm:h-5 group-hover:-translate-x-1 transition-transform" />
           <span>Back</span>
         </button>
 
         {/* Blog Content */}
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">{blog.title}</h1>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
+        <header className="mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-4 break-words">{blog.title}</h1>
+          <div className="flex flex-wrap gap-4 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
+            <div className="flex items-center gap-3">
               <img 
                 src={blog.author?.avatar || DEFAULT_PROFILE_IMAGE} 
                 alt={blog.author?.username} 
-                className="w-12 h-12 rounded-full object-cover"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
               />
               <div>
-                <p className="font-medium">{blog.author?.username}</p>
-                <div className="flex items-center gap-3 text-sm text-gray-500">
+                <p className="font-medium text-sm sm:text-base">{blog.author?.username}</p>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
                   <span>{new Date(blog.createdAt).toLocaleDateString()}</span>
-                  <span>•</span>
+                  <span className="hidden sm:inline">•</span>
                   <div className="flex items-center gap-1">
-                    <Clock size={14} />
+                    <Clock size={12} className="sm:w-4 sm:h-4" />
                     <span>{Math.ceil(blog.content.length / 1000)} min read</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
               <div className="relative">
                 <button 
                   onClick={handleShare}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
                   {showCopyTooltip ? (
-                    <Check size={20} className="text-green-600" />
+                    <Check size={16} className="sm:w-5 sm:h-5 text-green-600" />
                   ) : (
-                    <Share2 size={20} />
+                    <Share2 size={16} className="sm:w-5 sm:h-5" />
                   )}
                 </button>
                 {showCopyTooltip && (
@@ -409,20 +409,14 @@ const SingleBlog = () => {
               <div className="relative">
                 <button 
                   onClick={handleBookmark} 
-                  className={`p-2 hover:bg-gray-100 rounded-full transition-colors ${
+                  className={`p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
                     isBookmarked ? 'text-blue-600' : 'text-gray-600'
                   }`}
                 >
                   {isBookmarked ? (
-                    <BookmarkCheck
-                      size={20}
-                      className="transition-all duration-300 transform scale-110"
-                    />
+                    <BookmarkCheck size={16} className="sm:w-5 sm:h-5" />
                   ) : (
-                    <Bookmark
-                      size={20}
-                      className="transition-all duration-300 transform scale-100"
-                    />
+                    <Bookmark size={16} className="sm:w-5 sm:h-5" />
                   )}
                 </button>
               </div>
@@ -431,77 +425,104 @@ const SingleBlog = () => {
         </header>
 
         {/* Featured Image */}
-        <img 
-          src={blog.featuredImage} 
-          alt={blog.title}
-          className="w-full h-[400px] object-cover rounded-xl mb-8"
-        />
+        <div className="relative w-full">
+          <img 
+            src={blog.featuredImage} 
+            alt={blog.title}
+            className="w-full h-48 sm:h-64 lg:h-[400px] object-cover rounded-lg sm:rounded-xl mb-4 sm:mb-6 lg:mb-8"
+          />
+        </div>
 
         {/* Content */}
         <div 
-          className="prose prose-lg max-w-none blog-content 
-            prose-pre:p-0 prose-pre:m-0 prose-pre:bg-transparent"
-          dangerouslySetInnerHTML={{ __html: blog.content }}
-        />
+          className="prose prose-sm sm:prose lg:prose-lg max-w-none blog-content 
+            prose-pre:p-0 prose-pre:m-0 prose-pre:bg-transparent
+            prose-img:rounded-lg prose-img:w-full prose-img:max-w-full
+            overflow-hidden"
+        >
+          <div className="overflow-x-auto">
+            <div dangerouslySetInnerHTML={{ __html: blog.content }} />
+          </div>
+        </div>
+
+        {/* Add custom style for code blocks */}
+        <style>
+          {`
+            .blog-content pre {
+              max-width: 100vw;
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+            }
+            .blog-content img {
+              max-width: 100%;
+              height: auto;
+            }
+            .blog-content * {
+              overflow-wrap: break-word;
+              word-wrap: break-word;
+              word-break: break-word;
+            }
+          `}
+        </style>
 
         {/* Footer */}
-        <footer className="mt-12 pt-6 border-t">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
+        <footer className="mt-6 sm:mt-8 lg:mt-12 pt-4 border-t">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-2 max-w-full">
               {blog.tags && blog.tags.map(tag => (
                 <span 
                   key={tag} 
-                  className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm"
+                  className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs sm:text-sm whitespace-nowrap"
                 >
                   {tag}
                 </span>
               ))}
             </div>
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <button 
-                  onClick={handleLike}
-                  className={`flex items-center gap-2 ${
-                    isLiked ? 'text-blue-600' : 'text-gray-600'
-                  } hover:text-blue-600 transition-colors`}
-                >
-                  <ThumbsUp 
-                    size={20} 
-                    className={isLiked ? 'fill-current' : ''}
-                  />
-                  <span>{blog.stats?.likeCount || 0}</span>
-                </button>
-              </div>
-              <button className="flex items-center gap-2 text-gray-600">
-                <MessageCircle size={20} />
-                <span>{blog.stats?.commentCount || 0}</span>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <button 
+                onClick={handleLike}
+                className={`flex items-center gap-1 sm:gap-2 ${
+                  isLiked ? 'text-blue-600' : 'text-gray-600'
+                } hover:text-blue-600 transition-colors`}
+              >
+                <ThumbsUp 
+                  size={16} 
+                  className={`sm:w-5 sm:h-5 ${isLiked ? 'fill-current' : ''}`}
+                />
+                <span className="text-sm sm:text-base">{blog.stats?.likeCount || 0}</span>
               </button>
+              <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
+                <MessageCircle size={16} className="sm:w-5 sm:h-5" />
+                <span className="text-sm sm:text-base">{blog.stats?.commentCount || 0}</span>
+              </div>
             </div>
           </div>
         </footer>
 
         {/* Comments Section */}
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold mb-8">Comments ({comments.length})</h2>
+        <section className="mt-8 sm:mt-12 lg:mt-16">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-4 sm:mb-6">
+            Comments ({comments.length})
+          </h2>
           
           {/* Add Comment Form */}
-          <form onSubmit={handleAddComment} className="mb-8">
+          <form onSubmit={handleAddComment} className="mb-6 sm:mb-8">
             <div className="flex-1">
               <textarea
                 value={commentInput}
                 onChange={(e) => setCommentInput(e.target.value)}
                 placeholder={currentUser ? "Add a comment..." : "Please login to comment"}
                 disabled={!currentUser}
-                className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full px-3 sm:px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm sm:text-base"
                 rows="3"
               />
               <div className="flex justify-end mt-2">
                 <button
                   type="submit"
                   disabled={!commentInput.trim() || !currentUser}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
                 >
-                  <Send size={16} />
+                  <Send size={14} className="sm:w-4 sm:h-4" />
                   {currentUser ? 'Post Comment' : 'Login to Comment'}
                 </button>
               </div>
@@ -509,9 +530,9 @@ const SingleBlog = () => {
           </form>
 
           {/* Comments List */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {[...comments].reverse().map(comment => (
-              <div key={comment._id} className="flex gap-4 p-4 bg-white rounded-xl shadow-sm">
+              <div key={comment._id} className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-sm overflow-hidden">
                 <div 
                   className="cursor-pointer"
                   onClick={() => comment.user?._id && handleUserClick(comment.user._id)}
@@ -522,7 +543,7 @@ const SingleBlog = () => {
                     className="w-10 h-10 rounded-full object-cover hover:ring-2 hover:ring-blue-500 transition-all"
                   />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       {comment.user?._id ? (
@@ -552,7 +573,7 @@ const SingleBlog = () => {
                       <span>{comment.likeCount}</span>
                     </button>
                   </div>
-                  <p className="text-gray-600">{comment.content}</p>
+                  <p className="text-gray-600 break-words">{comment.content}</p>
                 </div>
               </div>
             ))}

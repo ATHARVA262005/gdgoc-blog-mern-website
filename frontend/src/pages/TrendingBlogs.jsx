@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Library } from 'lucide-react';
 import axios from 'axios';
 import BlogCard from '../components/BlogCard';
-import { useNavigate } from 'react-router-dom';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -15,17 +15,24 @@ const TrendingBlogs = () => {
   const [error, setError] = useState(null);
   const [likeStatuses, setLikeStatuses] = useState({});
   const [bookmarkStatuses, setBookmarkStatuses] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchTrendingBlogs();
-  }, []);
+  }, [currentPage]);
 
   const fetchTrendingBlogs = async () => {
     try {
-      const response = await api.get('/blogs/trending');
+      const response = await api.get('/blogs/trending', {
+        params: {
+          page: currentPage
+        }
+      });
       if (response.data.success) {
         setTrendingBlogs(response.data.trendingBlogs);
+        setTotalPages(response.data.totalPages);
         // Fetch like and bookmark statuses for all blogs
         fetchBookmarkAndLikeStatuses(response.data.trendingBlogs);
       }
@@ -68,7 +75,8 @@ const TrendingBlogs = () => {
     }
   };
 
-  const handleLike = async (blogId) => {
+  const handleLike = async (blogId, e) => {
+    e.stopPropagation();
     try {
       const response = await api.post(`/blogs/${blogId}/like`);
       if (response.data.success) {
@@ -90,7 +98,8 @@ const TrendingBlogs = () => {
     }
   };
 
-  const handleBookmark = async (blogId) => {
+  const handleBookmark = async (blogId, e) => {
+    e.stopPropagation();
     try {
       const response = await api.post(`/blogs/${blogId}/bookmark`);
       if (response.data.success) {
@@ -104,55 +113,79 @@ const TrendingBlogs = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-red-500">{error}</div>
-      </div>
-    );
-  }
+  const handleBlogClick = (blogId) => {
+    navigate(`/blog/${blogId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="px-8 py-12">
-        <div className="flex items-center gap-3 mb-8">
-          <TrendingUp className="text-blue-600" size={32} />
-          <h1 className="text-3xl font-bold">Most Popular Posts</h1>
+      <div className="px-4 sm:px-6 lg:px-8 py-6 mb-8 md:mb-0">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 sm:mb-8">
+          <Library className="text-blue-600" size={28} />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Trending Blogs</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
+              Discover what's popular in the community
+            </p>
+          </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {trendingBlogs.map(blog => (
-            <BlogCard
-              key={blog.id}
-              blog={{
-                ...blog,
-                stats: {
-                  likeCount: blog.stats?.likeCount || 0,
-                  commentCount: blog.stats?.commentCount || 0
-                }
-              }}
-              isLiked={likeStatuses[blog.id] || false}
-              isBookmarked={bookmarkStatuses[blog.id] || false}
-              onLike={(e) => {
-                e.stopPropagation();
-                handleLike(blog.id);
-              }}
-              onBookmark={(e) => {
-                e.stopPropagation();
-                handleBookmark(blog.id);
-              }}
-              onClick={() => navigate(`/blog/${blog.id}`)}
-            />
-          ))}
-        </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600">{error}</p>
+          </div>
+        ) : (
+          <>
+            {/* Blogs Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              {trendingBlogs.map(blog => (
+                <BlogCard
+                  key={blog.id}
+                  blog={blog}
+                  onClick={() => handleBlogClick(blog.id)}
+                  onLike={(e) => handleLike(blog.id, e)}
+                  onBookmark={(e) => handleBookmark(blog.id, e)}
+                  isLiked={likeStatuses[blog.id]}
+                  isBookmarked={bookmarkStatuses[blog.id]}
+                />
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {trendingBlogs.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-base sm:text-lg">
+                  No trending blogs found
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 sm:gap-4 mt-8">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg text-sm sm:text-base transition-colors
+                  ${currentPage === i + 1 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                  }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
