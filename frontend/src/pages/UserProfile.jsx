@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { User, Calendar, Mail, Github, XIcon, Linkedin, Globe, ThumbsUp, Loader, Edit2 } from 'lucide-react';
 import { FaXTwitter } from "react-icons/fa6";
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProfile, getUserComments, updateProfilePicture, updateUserProfile } from '../services/userService';
 import ProfilePictureModal from '../components/ProfilePictureModal';
 import EditProfileModal from '../components/EditProfileModal';
+import Toast from '../components/Toast';
 
 const UserProfile = () => {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,6 +17,8 @@ const UserProfile = () => {
   const [userData, setUserData] = useState(null);
   const [userComments, setUserComments] = useState([]);
   const { user } = useAuth();
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const handleProfilePictureChange = async (imageData) => {
     try {
@@ -39,6 +44,9 @@ const UserProfile = () => {
       setUserData(result.user);
       setIsEditModalOpen(false);
       setError(null);
+      // Show success toast
+      setToastMessage('Profile updated successfully!');
+      setShowToast(true);
     } catch (error) {
       setError('Failed to update profile');
     } finally {
@@ -83,12 +91,21 @@ const UserProfile = () => {
     fetchUserData();
   }, [user?.id]);
 
-  // Add a redirect if user is not onboarded
+  // Update the onboarding check logic
   useEffect(() => {
-    if (userData && !userData.onboarded) {
+    // Get the stored user data
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Only redirect if:
+    // 1. User data exists AND
+    // 2. User is explicitly not onboarded (false) AND
+    // 3. Stored user is also not onboarded
+    if (userData && 
+        userData.onboarded === false && 
+        storedUser.onboarded !== true) {
       navigate('/onboarding', { state: { userData } });
     }
-  }, [userData]);
+  }, [userData, navigate]);
 
   if (isLoading) {
     return (
@@ -114,6 +131,16 @@ const UserProfile = () => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'long',
       year: 'numeric'
+    });
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -201,30 +228,65 @@ const UserProfile = () => {
           </div>
         </div>
 
-        {/* Comments Section */}
-        <div>
-          <h2 className="text-2xl font-bold mb-6">Recent Comments</h2>
-          {userComments.length > 0 ? (
-            <div className="space-y-4">
-              {userComments.map(comment => (
-                <div key={comment._id} className="bg-white rounded-xl p-6 shadow-sm">
-                  <h3 className="font-semibold text-blue-600 mb-2">{comment.blogTitle}</h3>
-                  <p className="text-gray-600 mb-4">{comment.content}</p>
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <span>{formatJoinDate(comment.createdAt)}</span>
-                    <div className="flex items-center gap-2">
-                      <ThumbsUp size={16} />
-                      <span>{comment.likes} likes</span>
+        {/* Updated Comments Section */}
+        <div className="px-8 py-12">
+          <div>
+            <h2 className="text-2xl font-bold mb-6">My Comments</h2>
+            {userComments.length > 0 ? (
+              <div className="space-y-6">
+                {userComments.map(comment => (
+                  <div key={comment._id} className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <Link 
+                      to={`/blog/${comment.blogId}`} 
+                      className="block mb-4"
+                    >
+                      <h3 className="text-lg font-semibold text-blue-600 hover:text-blue-700 mb-2">
+                        {comment.blogTitle}
+                      </h3>
+                      <div className="prose prose-sm max-w-none text-gray-600">
+                        {comment.content}
+                      </div>
+                    </Link>
+                    <div className="flex items-center justify-between text-sm text-gray-500 mt-4 pt-4 border-t">
+                      <span>{formatDate(comment.createdAt)}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <ThumbsUp size={16} />
+                          <span>{comment.likes || 0} likes</span>
+                        </div>
+                        <Link 
+                          to={`/blog/${comment.blogId}#comment-${comment._id}`}
+                          className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                        >
+                          View Discussion
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-8">No comments yet</p>
-          )}
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+                <p className="text-gray-500 mb-4">No comments yet</p>
+                <Link 
+                  to="/blogs" 
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Browse blogs to start commenting
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type="success"
+          onClose={() => setShowToast(false)}
+        />
+      )}
 
       {isModalOpen && (
         <ProfilePictureModal

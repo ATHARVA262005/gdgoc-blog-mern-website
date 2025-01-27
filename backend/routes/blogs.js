@@ -6,6 +6,7 @@ const optionalAuth = require('../middleware/optionalAuth');
 const User = require('../models/User');
 const Like = require('../models/Like');
 const Admin = require('../models/Admin'); // Add this line
+const Comment = require('../models/Comment'); // Add this line
 const router = express.Router();
 
 // Get user's bookmarked blogs with full blog details
@@ -358,33 +359,45 @@ router.post('/:id/comments', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Blog not found' });
     }
 
-    // Get current user data with correct field name
-    const currentUser = await User.findById(req.user.userId)
-      .select('name profileImage');  // Changed from 'username' to 'name'
-
-    const comment = {
+    // Create new comment object
+    const newComment = {
       user: req.user.userId,
       content: req.body.content,
-      likes: [],
-      likeCount: 0
+      createdAt: new Date(),
+      likes: []
     };
 
-    blog.comments.unshift(comment);
-    blog.stats.commentCount = blog.comments.length;
+    // Add comment to blog
+    blog.comments.push(newComment);
+    blog.stats.commentCount = (blog.stats.commentCount || 0) + 1;
     await blog.save();
 
-    // Return newly created comment with user data using correct field name
+    // Add comment to user's comments
+    const user = await User.findById(req.user.userId);
+    user.comments.push({
+      blog: blog._id,
+      content: req.body.content,
+      createdAt: newComment.createdAt,
+      likes: []
+    });
+    await user.save();
+
+    // Get user details for response
+    const currentUser = await User.findById(req.user.userId)
+      .select('name profileImage');
+
+    // Return formatted comment
     res.json({
       success: true,
       comment: {
-        _id: blog.comments[0]._id,
-        content: comment.content,
-        createdAt: blog.comments[0].createdAt,
-        likes: comment.likes,
-        likeCount: comment.likeCount,
+        _id: blog.comments[blog.comments.length - 1]._id,
+        content: newComment.content,
+        createdAt: newComment.createdAt,
+        likes: [],
+        likeCount: 0,
         user: {
           _id: currentUser._id,
-          username: currentUser.name,  // Using the correct field 'name'
+          username: currentUser.name,
           profileImage: currentUser.profileImage?.url
         },
         isLiked: false

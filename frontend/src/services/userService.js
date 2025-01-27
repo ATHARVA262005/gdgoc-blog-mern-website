@@ -46,8 +46,13 @@ export const getUserProfile = async (userId) => {
 };
 
 export const getUserComments = async (userId) => {
-  const response = await axiosInstance.get(`/users/${userId}/comments`);
-  return response.data;
+  try {
+    const response = await axiosInstance.get(`/users/${userId}/comments`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user comments:', error);
+    throw error;
+  }
 };
 
 export const updateProfilePicture = async (userId, imageData) => {

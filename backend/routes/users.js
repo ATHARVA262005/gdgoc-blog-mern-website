@@ -120,22 +120,22 @@ router.patch('/:userId/profile', auth, async (req, res) => {
 // Get user comments
 router.get('/:userId/comments', auth, async (req, res) => {
   try {
-    const comments = await Comment.find({ user: req.params.userId })
+    const user = await User.findById(req.params.userId)
       .populate({
-        path: 'blog',
-        select: 'title'
+        path: 'comments.blog',
+        select: 'title slug'
       })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean()
-      .exec();
-    
-    const formattedComments = comments.map(comment => ({
+      .select('comments')
+      .lean();
+
+    const formattedComments = user.comments.map(comment => ({
       _id: comment._id,
       content: comment.content,
+      blogId: comment.blog?._id,
       blogTitle: comment.blog?.title || 'Deleted Blog',
+      blogSlug: comment.blog?.slug,
       createdAt: comment.createdAt,
-      likes: comment.likes
+      likes: comment.likes?.length || 0
     }));
     
     res.json(formattedComments);

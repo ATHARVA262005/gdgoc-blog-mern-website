@@ -52,6 +52,15 @@ const userSchema = new mongoose.Schema({
   bookmarks: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Blog'
+  }],
+  comments: [{
+    blog: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Blog'
+    },
+    content: String,
+    createdAt: { type: Date, default: Date.now },
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
   }]
 }, { timestamps: true });
 

@@ -61,18 +61,27 @@ const Onboarding = () => {
     twitter: userData.socialLinks?.twitter || ''
   });
 
-  // Redirect to login if no user data
+  // Update the useEffect for redirection logic
   useEffect(() => {
-    if (!userData.id) {
+    // Get user data from all possible sources
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const currentUser = userDataFromLocation || storedUser;
+
+    // Redirect to login if no user data
+    if (!currentUser.id) {
       navigate('/login', { replace: true });
       return;
     }
 
-    // If user is already onboarded, redirect to home
-    if (userData.onboarded) {
-      navigate('/', { replace: true });
+    // Check if user is already onboarded from any source
+    const isOnboarded = currentUser.onboarded || storedUser.onboarded;
+    
+    // Redirect to profile if already onboarded
+    if (isOnboarded) {
+      navigate('/profile', { replace: true });
+      return;
     }
-  }, [userData, navigate]);
+  }, [navigate, userDataFromLocation]);
 
   // Form validation
   const validateForm = () => {
