@@ -256,15 +256,18 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// Complete Onboarding
-router.post('/complete-onboarding', async (req, res) => {
+// Complete Onboarding route should be protected with auth middleware
+router.post('/complete-onboarding', auth, async (req, res) => {
   try {
-    const { userId, name, bio, profileImage, socialLinks } = req.body;
+    const { name, bio, profileImage, socialLinks } = req.body;
+    
+    // Get userId from authenticated request
+    const userId = req.user.userId;
 
     // Validate required fields
-    if (!userId || !name || !bio) {
+    if (!name || !bio) {
       return res.status(400).json({ 
-        message: 'User ID, name, and bio are required' 
+        message: 'Name and bio are required' 
       });
     }
 
@@ -286,11 +289,8 @@ router.post('/complete-onboarding', async (req, res) => {
 
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
     res.json({
       message: 'Onboarding completed successfully',
-      token,
       user: user.toJSON()
     });
   } catch (error) {

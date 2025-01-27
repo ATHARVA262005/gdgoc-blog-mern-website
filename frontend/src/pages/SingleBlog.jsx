@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ThumbsUp, MessageCircle, Bookmark, Share2, Clock, Send, ArrowLeft, Check, BookmarkCheck } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Bookmark, Share2, Clock, Send, ArrowLeft, Check, BookmarkCheck, Copy } from 'lucide-react';  // Add Copy to imports
 import axios from 'axios';
 import { toggleBookmark, getBookmarkStatus, toggleLike, addComment } from '../services/blogService';
 import Toast from '../components/Toast';
@@ -23,6 +23,7 @@ const SingleBlog = () => {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isLiked, setIsLiked] = useState(false);
   const [commentInput, setCommentInput] = useState('');
+  const [copiedCode, setCopiedCode] = useState(null);
 
   // Fetch blog data
   useEffect(() => {
@@ -109,6 +110,62 @@ const SingleBlog = () => {
     checkBookmarkStatus();
   }, [blog?._id]);
 
+  // Add effect to process code blocks after content load
+  useEffect(() => {
+    if (blog) {
+      const processCodeBlocks = () => {
+        const content = document.querySelector('.blog-content');
+        if (!content) return;
+
+        const codeBlocks = content.querySelectorAll('pre');
+        codeBlocks.forEach((block) => {
+          // Add wrapper div if not already wrapped
+          if (!block.parentElement.classList.contains('relative')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'relative group';
+            block.parentNode.insertBefore(wrapper, block);
+            wrapper.appendChild(block);
+
+            // Style the pre block
+            block.className = 'bg-gray-900 rounded-lg text-gray-300 p-4 my-4 overflow-x-auto';
+
+            // Add copy button if it doesn't exist
+            if (!wrapper.querySelector('.copy-button')) {
+              const copyButton = document.createElement('button');
+              copyButton.className = 
+                'copy-button absolute top-2 right-2 p-2 rounded-lg bg-gray-700 text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-gray-600 transition-all duration-200';
+              copyButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              `;
+
+              // Add click handler
+              copyButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const code = block.querySelector('code')?.textContent || block.textContent;
+                handleCopyCode(code);
+              });
+
+              wrapper.appendChild(copyButton);
+            }
+
+            // Style code element if it exists
+            const codeElement = block.querySelector('code');
+            if (codeElement) {
+              codeElement.className = 'text-white text-sm font-mono';
+            }
+          }
+        });
+      };
+
+      // Process code blocks after a short delay to ensure content is rendered
+      setTimeout(processCodeBlocks, 100);
+    }
+  }, [blog]);
+
   // Only add auth header for protected operations
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -141,6 +198,7 @@ const SingleBlog = () => {
     }
   };
 
+  // Update the handleLikeComment function
   const handleLikeComment = async (commentId) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -151,7 +209,7 @@ const SingleBlog = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/blogs/${id}/comments/${commentId}/like`,
+        `http://localhost:5000/api/blogs/comments/${commentId}/like`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -160,14 +218,11 @@ const SingleBlog = () => {
 
       if (response.data.success) {
         setComments(prev => prev.map(comment => {
-          if (comment._id === response.data.commentId) {
+          if (comment._id === commentId) {
             return {
               ...comment,
               isLiked: response.data.isLiked,
-              likeCount: response.data.likeCount,
-              likes: response.data.isLiked 
-                ? [...(comment.likes || []), currentUser._id]
-                : (comment.likes || []).filter(id => id !== currentUser._id)
+              likeCount: response.data.likeCount
             };
           }
           return comment;
@@ -248,6 +303,19 @@ const SingleBlog = () => {
     navigate(`/profile/${userId}`);
   };
 
+  // Add copy code function
+  const handleCopyCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      showToast('Code copied to clipboard!', 'success');
+      setTimeout(() => setCopiedCode(null), 3000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      showToast('Failed to copy code', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -274,6 +342,7 @@ const SingleBlog = () => {
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -370,7 +439,8 @@ const SingleBlog = () => {
 
         {/* Content */}
         <div 
-          className="prose prose-lg max-w-none"
+          className="prose prose-lg max-w-none blog-content 
+            prose-pre:p-0 prose-pre:m-0 prose-pre:bg-transparent"
           dangerouslySetInnerHTML={{ __html: blog.content }}
         />
 
@@ -416,38 +486,31 @@ const SingleBlog = () => {
           
           {/* Add Comment Form */}
           <form onSubmit={handleAddComment} className="mb-8">
-            <div className="flex gap-4">
-              <img 
-                src={currentUser?.profileImage?.url || DEFAULT_PROFILE_IMAGE}
-                alt={currentUser?.username || 'User'} 
-                className="w-10 h-10 rounded-full object-cover"
+            <div className="flex-1">
+              <textarea
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                placeholder={currentUser ? "Add a comment..." : "Please login to comment"}
+                disabled={!currentUser}
+                className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                rows="3"
               />
-              <div className="flex-1">
-                <textarea
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  placeholder={currentUser ? "Add a comment..." : "Please login to comment"}
-                  disabled={!currentUser}
-                  className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  rows="3"
-                />
-                <div className="flex justify-end mt-2">
-                  <button
-                    type="submit"
-                    disabled={!commentInput.trim() || !currentUser}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Send size={16} />
-                    {currentUser ? 'Post Comment' : 'Login to Comment'}
-                  </button>
-                </div>
+              <div className="flex justify-end mt-2">
+                <button
+                  type="submit"
+                  disabled={!commentInput.trim() || !currentUser}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Send size={16} />
+                  {currentUser ? 'Post Comment' : 'Login to Comment'}
+                </button>
               </div>
             </div>
           </form>
 
           {/* Comments List */}
           <div className="space-y-6">
-            {comments.map(comment => (
+            {[...comments].reverse().map(comment => (
               <div key={comment._id} className="flex gap-4 p-4 bg-white rounded-xl shadow-sm">
                 <div 
                   className="cursor-pointer"
@@ -482,8 +545,11 @@ const SingleBlog = () => {
                         comment.isLiked ? 'text-blue-600' : 'text-gray-500'
                       } hover:text-blue-600 transition-colors`}
                     >
-                      <ThumbsUp size={16} className={comment.isLiked ? 'fill-current' : ''} />
-                      <span>{comment.likeCount || 0}</span>
+                      <ThumbsUp 
+                        size={16} 
+                        className={comment.isLiked ? 'fill-current' : ''} 
+                      />
+                      <span>{comment.likeCount}</span>
                     </button>
                   </div>
                   <p className="text-gray-600">{comment.content}</p>

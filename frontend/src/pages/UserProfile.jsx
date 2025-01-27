@@ -7,6 +7,7 @@ import { getUserProfile, getUserComments, updateProfilePicture, updateUserProfil
 import ProfilePictureModal from '../components/ProfilePictureModal';
 import EditProfileModal from '../components/EditProfileModal';
 import Toast from '../components/Toast';
+import axios from 'axios';
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -249,18 +250,12 @@ const UserProfile = () => {
                     </Link>
                     <div className="flex items-center justify-between text-sm text-gray-500 mt-4 pt-4 border-t">
                       <span>{formatDate(comment.createdAt)}</span>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <ThumbsUp size={16} />
-                          <span>{comment.likes || 0} likes</span>
-                        </div>
-                        <Link 
-                          to={`/blog/${comment.blogId}#comment-${comment._id}`}
-                          className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                        >
-                          View Discussion
-                        </Link>
-                      </div>
+                      <Link 
+                        to={`/blog/${comment.blogId}#comment-${comment._id}`}
+                        className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                      >
+                        View Discussion
+                      </Link>
                     </div>
                   </div>
                 ))}

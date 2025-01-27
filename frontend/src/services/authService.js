@@ -2,23 +2,27 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:5000/api/auth';
 
-// Enhanced session management
+// Enhanced session management with 24h expiration
 const setSession = (token, user) => {
   if (token && user) {
+    // Set token expiration to 24 hours from now
+    const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+    
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('expiresAt', expiresAt.toString());
+    
     axios.defaults.headers.common.Authorization = `Bearer ${token}`;
     
-    // Set auto logout after token expiry
-    const tokenData = JSON.parse(atob(token.split('.')[1]));
-    const expiresIn = (tokenData.exp * 1000) - Date.now();
+    // Set auto logout after 24 hours
     setTimeout(() => {
       logout();
       window.location.reload();
-    }, expiresIn);
+    }, 24 * 60 * 60 * 1000);
   } else {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('expiresAt');
     delete axios.defaults.headers.common.Authorization;
   }
 };
@@ -148,16 +152,16 @@ export const logout = () => {
   setSession(null, null);
 };
 
-// Modified isAuthenticated function
+// Modified isAuthenticated function to check token expiration
 export const isAuthenticated = () => {
   try {
     const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
+    const expiresAt = localStorage.getItem('expiresAt');
     
-    if (!token || !userStr) return false;
+    if (!token || !expiresAt) return false;
     
-    const tokenData = JSON.parse(atob(token.split('.')[1]));
-    if (tokenData.exp * 1000 < Date.now()) {
+    // Check if token has expired
+    if (Date.now() >= parseInt(expiresAt)) {
       setSession(null, null);
       return false;
     }
@@ -191,21 +195,39 @@ export const requiresOnboarding = () => {
   return user && !user.onboarded;
 };
 
+const getAuthHeader = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
+};
+
 export const completeOnboarding = async (userData) => {
   try {
     const response = await fetch(`${API_URL}/complete-onboarding`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...getAuthHeader()
-      },
-      body: JSON.stringify(userData),
+      headers: getAuthHeader(),
+      body: JSON.stringify({
+        ...userData,
+        userId: getCurrentUser().id // Add userId from current user
+      })
     });
-    
+
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to complete onboarding');
+    }
     
-    return data;
+    // Update local storage with new user data
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    localStorage.setItem('user', JSON.stringify({ ...currentUser, ...data.user, onboarded: true }));
+    
+    return data.user;
   } catch (error) {
     console.error('Onboarding error:', error);
     throw error;

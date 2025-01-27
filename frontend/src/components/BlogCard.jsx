@@ -2,6 +2,11 @@ import React from 'react';
 import { ThumbsUp, MessageCircle, Bookmark, BookmarkCheck, Clock } from 'lucide-react';
 import gdgLogo from '/images/profile_administrator.webp';
 
+const stripHtmlTags = (html) => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '');
+};
+
 const BlogCard = ({ 
   blog: {
     title,
@@ -20,6 +25,7 @@ const BlogCard = ({
 }) => {
   // Destructure with defaults for better error handling
   const { likeCount = 0, commentCount = 0 } = stats;
+  const cleanContent = stripHtmlTags(content);
 
   return (
     <div 
@@ -49,7 +55,7 @@ const BlogCard = ({
 
         {/* Content Preview */}
         <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-          {content}
+          {cleanContent}
         </p>
 
         {/* Author & Stats */}
@@ -75,7 +81,7 @@ const BlogCard = ({
           {/* Interaction Stats */}
           <div className="flex items-center gap-4 text-gray-500">
             <button
-              onClick={onLike}
+              onClick={(e) => onLike(e)}
               className={`flex items-center gap-1 transition-colors
                 ${isLiked ? 'text-blue-600' : 'hover:text-blue-600'}`}
             >
@@ -84,7 +90,7 @@ const BlogCard = ({
             </button>
 
             <button
-              onClick={onBookmark}
+              onClick={(e) => onBookmark(e)}
               className={`transition-colors
                 ${isBookmarked ? 'text-blue-600' : 'hover:text-blue-600'}`}
             >

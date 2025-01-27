@@ -281,36 +281,42 @@ const Home = () => {
           axios.get('http://localhost:5000/api/blogs/featured'),
         ];
 
-        // Only fetch user preferences if user is logged in and has token
+        // Add likes status request if user is logged in
         const token = localStorage.getItem('token');
         if (user && token) {
-          requests.push(axios.get('http://localhost:5000/api/users/preferences', {
-            headers: { Authorization: `Bearer ${token}` }
+          const responses = await Promise.all(requests);
+          const blogIds = responses[0].data.blogs.map(blog => blog._id);
+          
+          // Fetch like statuses for all blogs
+          const likesResponse = await axios.post(
+            'http://localhost:5000/api/blogs/likes-status',
+            { blogIds },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          // Merge like status with blog data
+          const blogsWithLikes = responses[0].data.blogs.map(blog => ({
+            ...blog,
+            isLiked: likesResponse.data.likeStatuses[blog._id] || false
           }));
-        }
 
-        const responses = await Promise.all(requests);
-
-        setBlogs(responses[0].data.blogs);
-        setFeaturedBlogs(responses[1].data.featuredBlogs);
-        
-        // Set user preferences only if user is logged in and we got the data
-        if (user && responses[2]) {
-          setUserPreferences(responses[2].data.preferences);
+          setBlogs(blogsWithLikes);
+          setFeaturedBlogs(responses[1].data.featuredBlogs);
+        } else {
+          const [blogsRes, featuredRes] = await Promise.all(requests);
+          setBlogs(blogsRes.data.blogs);
+          setFeaturedBlogs(featuredRes.data.featuredBlogs);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
-        // Don't show error for preferences fetch failure
-        if (!err.message.includes('preferences')) {
-          setError('Failed to fetch blogs. Please try again later.');
-        }
+        setError('Failed to fetch blogs. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user]); // Add user as dependency
+  }, [user]);
 
   if (loading) {
     return (

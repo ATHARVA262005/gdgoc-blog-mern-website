@@ -119,27 +119,38 @@ router.patch('/:userId/profile', auth, async (req, res) => {
   }
 });
 
-// Get user comments
+// Update the get user comments route to include blog comments data
 router.get('/:userId/comments', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId)
-      .populate({
-        path: 'comments.blog',
-        select: 'title slug'
-      })
-      .select('comments')
-      .lean();
-
-    const formattedComments = user.comments.map(comment => ({
-      _id: comment._id,
-      content: comment.content,
-      blogId: comment.blog?._id,
-      blogTitle: comment.blog?.title || 'Deleted Blog',
-      blogSlug: comment.blog?.slug,
-      createdAt: comment.createdAt,
-      likes: comment.likes?.length || 0
-    }));
+    const requestingUserId = req.user.userId;
+    const user = await User.findById(req.params.userId);
     
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get all blogs containing user's comments
+    const blogs = await Blog.find({
+      'comments.user': req.params.userId
+    }).select('comments title');
+
+    // Format comments with data from blogs
+    const formattedComments = user.comments.map(userComment => {
+      const blog = blogs.find(b => b._id.toString() === userComment.blog.toString());
+      const blogComment = blog?.comments.find(c => c._id.toString() === userComment._id.toString());
+
+      return {
+        _id: userComment._id,
+        content: userComment.content,
+        blogId: userComment.blog,
+        blogTitle: blog?.title || 'Deleted Blog',
+        createdAt: userComment.createdAt,
+        likes: blogComment?.likes || [],
+        likeCount: blogComment?.likes?.length || 0,
+        isLiked: requestingUserId ? blogComment?.likes?.includes(requestingUserId) : false
+      };
+    });
+
     res.json(formattedComments);
   } catch (error) {
     console.error('Error fetching comments:', error);

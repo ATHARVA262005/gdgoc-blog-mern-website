@@ -4,12 +4,18 @@ import axios from 'axios';
 import { getVisitedTime } from '../utils/recentlyViewed';
 import { useNavigate } from 'react-router-dom';
 
+const stripHtmlTags = (html) => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '');
+};
+
 const RecentBlogs = () => {
   const navigate = useNavigate();
   const [blogs, setBlogs] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [likesStatus, setLikesStatus] = useState({});
 
   useEffect(() => {
     fetchRecentlyViewedBlogs();
@@ -23,6 +29,27 @@ const RecentBlogs = () => {
     } catch (error) {
       console.error('Error parsing recently viewed blogs:', error);
       return [];
+    }
+  };
+
+  const fetchLikesStatus = async (blogIds) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.post('/api/blogs/likes-status', 
+        { blogIds },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+
+      if (response.data.success) {
+        setLikesStatus(prev => ({
+          ...prev,
+          ...response.data.likeStatuses
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching likes status:', error);
     }
   };
 
@@ -48,7 +75,7 @@ const RecentBlogs = () => {
         const formattedBlogs = response.data.blogs.map(blog => ({
           id: blog._id,
           title: blog.title,
-          excerpt: blog.content?.substring(0, 150) + '...',
+          excerpt: stripHtmlTags(blog.content)?.substring(0, 150) + '...',
           author: blog.author?.username || 'Unknown',
           authorImage: blog.author?.profileImage?.url || '/images/profile_administrator.webp',
           date: new Date(blog.createdAt).toLocaleDateString(),
@@ -56,7 +83,8 @@ const RecentBlogs = () => {
           likes: blog.stats?.likeCount || 0,
           comments: blog.stats?.commentCount || 0,
           category: blog.category,
-          image: blog.featuredImage || 'https://placehold.co/600x400'
+          image: blog.featuredImage || 'https://placehold.co/600x400',
+          isLiked: likesStatus[blog._id] || false,
         }));
 
         if (page === 1) {
@@ -65,6 +93,8 @@ const RecentBlogs = () => {
           setBlogs(prev => [...prev, ...formattedBlogs]);
         }
         setHasMore(response.data.hasMore);
+
+        await fetchLikesStatus(response.data.blogs.map(blog => blog._id));
       }
     } catch (error) {
       console.error('Error fetching recently viewed blogs:', error);
@@ -79,6 +109,39 @@ const RecentBlogs = () => {
 
   const handleBlogClick = (blogId) => {
     navigate(`/blog/${blogId}`);
+  };
+
+  const handleLikeClick = async (e, blogId) => {
+    e.stopPropagation();
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return;
+      }
+
+      const response = await axios.post(`/api/blogs/${blogId}/like`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setLikesStatus(prev => ({
+          ...prev,
+          [blogId]: response.data.isLiked
+        }));
+        
+        setBlogs(prev => prev.map(blog => {
+          if (blog.id === blogId) {
+            return {
+              ...blog,
+              likes: response.data.likeCount
+            };
+          }
+          return blog;
+        }));
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
   };
 
   if (blogs.length === 0 && !loading) {
@@ -136,10 +199,20 @@ const RecentBlogs = () => {
                       {blog.category}
                     </span>
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1">
-                        <ThumbsUp size={16} />
+                      <button 
+                        onClick={(e) => handleLikeClick(e, blog.id)}
+                        className={`flex items-center gap-1 ${
+                          likesStatus[blog.id] 
+                            ? 'text-blue-600 font-medium' 
+                            : 'text-gray-500 hover:text-blue-600'
+                        }`}
+                      >
+                        <ThumbsUp 
+                          size={16} 
+                          className={likesStatus[blog.id] ? 'fill-current' : ''} 
+                        />
                         <span>{blog.likes}</span>
-                      </div>
+                      </button>
                       <div className="flex items-center gap-1">
                         <MessageCircle size={16} />
                         <span>{blog.comments}</span>

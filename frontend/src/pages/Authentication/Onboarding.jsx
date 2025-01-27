@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Globe, Github, Linkedin, Twitter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { completeOnboarding } from '../../services/authService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const profileImages = [
   {
@@ -39,6 +40,7 @@ const profileImages = [
 const Onboarding = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, login } = useAuth(); // Add auth context
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -63,25 +65,18 @@ const Onboarding = () => {
 
   // Update the useEffect for redirection logic
   useEffect(() => {
-    // Get user data from all possible sources
-    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const currentUser = userDataFromLocation || storedUser;
-
-    // Redirect to login if no user data
-    if (!currentUser.id) {
+    // Redirect to login if no user
+    if (!user?.id) {
       navigate('/login', { replace: true });
       return;
     }
 
-    // Check if user is already onboarded from any source
-    const isOnboarded = currentUser.onboarded || storedUser.onboarded;
-    
     // Redirect to profile if already onboarded
-    if (isOnboarded) {
+    if (user.onboarded) {
       navigate('/profile', { replace: true });
       return;
     }
-  }, [navigate, userDataFromLocation]);
+  }, [navigate, user]);
 
   // Form validation
   const validateForm = () => {
@@ -109,8 +104,7 @@ const Onboarding = () => {
     setLoading(true);
 
     try {
-      await completeOnboarding({
-        userId: userData.id,
+      const updatedUser = await completeOnboarding({
         name: formData.name.trim(),
         bio: formData.bio.trim(),
         profileImage: profileImages[currentImageIndex],
@@ -122,11 +116,14 @@ const Onboarding = () => {
         }
       });
 
-      // Redirect to home page after successful onboarding
+      // Update both localStorage and AuthContext
+      const token = localStorage.getItem('token');
+      login(updatedUser, token);
+      
       navigate('/', { replace: true });
     } catch (err) {
       console.error('Onboarding error:', err);
-      setError(err.message || 'Failed to complete onboarding');
+      setError(err.message || 'Failed to complete onboarding. Please try again.');
     } finally {
       setLoading(false);
     }

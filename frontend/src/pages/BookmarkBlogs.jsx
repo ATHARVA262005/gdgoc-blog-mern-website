@@ -11,9 +11,66 @@ const BookmarkBlogs = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const fetchLikeStatuses = async (blogs) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        '/api/blogs/likes-status',
+        {
+          blogIds: blogs.map(blog => blog._id)
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.success) {
+        return blogs.map(blog => ({
+          ...blog,
+          isLiked: response.data.likeStatuses[blog._id]
+        }));
+      }
+      return blogs;
+    } catch (error) {
+      console.error('Error fetching like statuses:', error);
+      return blogs;
+    }
+  };
+
+  const handleLike = async (blogId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`/api/blogs/${blogId}/like`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setBookmarkedBlogs(blogs => 
+          blogs.map(blog => 
+            blog._id === blogId 
+              ? { 
+                  ...blog, 
+                  isLiked: response.data.isLiked,
+                  stats: { 
+                    ...blog.stats, 
+                    likeCount: response.data.likeCount 
+                  }
+                }
+              : blog
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
   useEffect(() => {
-    // Redirect if not logged in
-    if (!user) {
+
+    console.log('BookmarkBlogs - User state:', user);
+    
+    if (!user || !user.id) {
+      console.log("No valid user found in BookmarkBlogs");
       navigate('/login');
       return;
     }
@@ -21,37 +78,38 @@ const BookmarkBlogs = () => {
     const fetchBookmarks = async () => {
       try {
         setLoading(true);
-        setError(null); // Reset error state
+        setError(null);
         
         const token = localStorage.getItem('token');
         if (!token) {
-          throw new Error('No authentication token found');
+          navigate('/login'); // Redirect to login if no token
+          return;
         }
-
+  
         const response = await axios.get('http://localhost:5000/api/blogs/bookmarks', {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
-
+  
         if (response.data.success) {
-          setBookmarkedBlogs(response.data.bookmarks || []);
+          // Fetch like statuses for bookmarked blogs
+          const blogsWithLikeStatus = await fetchLikeStatuses(response.data.bookmarks);
+          setBookmarkedBlogs(blogsWithLikeStatus);
         } else {
-          throw new Error(response.data.message || 'Failed to fetch bookmarks');
+          setError(response.data.message || 'Failed to fetch bookmarks');
         }
-      } catch (err) {
-        console.error('Error fetching bookmarks:', err);
-        setError(
-          err.response?.data?.message || 
-          err.message || 
-          'Failed to fetch bookmarked blogs'
-        );
+      } catch (error) {
+        setError(error.message || 'An error occurred while fetching bookmarks');
+        if (error.response?.status === 401) {
+          navigate('/login'); // Redirect to login on authentication error
+        }
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchBookmarks();
   }, [user, navigate]);
 
@@ -98,6 +156,11 @@ const BookmarkBlogs = () => {
                 blog={blog}
                 onClick={() => handleBlogClick(blog._id)}
                 isBookmarked={true}
+                isLiked={blog.isLiked}
+                onLike={(e) => {
+                  e.stopPropagation();
+                  handleLike(blog._id);
+                }}
               />
             ))}
           </div>

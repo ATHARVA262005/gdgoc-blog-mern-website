@@ -22,21 +22,26 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import PublicRoute from './components/PublicRoute';
 import AdminLogin from './pages/Admin/AdminLogin';
 import AdminSignup from './pages/Admin/AdminSignup';
+import Profile from './pages/Profile'
 
 // Protected Route Components
 const RequireAuth = ({ children }) => {
   const { user, isAdmin } = useAuth();
   const location = useLocation();
 
-  // Allow access if user is logged in OR is admin
+  console.log('RequireAuth - Current user:', user); // Add this
+  console.log('RequireAuth - Location:', location.pathname); // Add this
+  console.log('RequireAuth - Onboarded status:', user?.onboarded); // Add this
+
   if (!user && !isAdmin) {
+    console.log('RequireAuth - No user/admin, redirecting to login'); // Add this
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Only check onboarding for regular users, not admins
   if (user && !user.onboarded && !isAdmin && 
       location.pathname !== '/onboarding' && 
       location.pathname !== '/profile') {
+    console.log('RequireAuth - User not onboarded, redirecting to onboarding'); // Add this
     return <Navigate to="/onboarding" state={{ from: location }} replace />;
   }
 
@@ -113,9 +118,17 @@ const AppLayout = () => {
           <Route path="/blog/:id" element={<SingleBlog />} />
           
           {/* Protected Routes - require login */}
-          <Route path="/bookmarks" element={<RequireAuth><BookmarkBlogs /></RequireAuth>} />
-          <Route path="/profile" element={<RequireAuth><UserProfile /></RequireAuth>} />
-          <Route path="/profile/:userId" element={<UserProfile />} />
+          <Route path="/bookmarks" element={
+            <RequireAuth>
+              <BookmarkBlogs />
+            </RequireAuth>
+          } />
+          <Route path="/profile" element={
+            <RequireAuth>
+              <UserProfile />
+            </RequireAuth>
+          } />
+          <Route path="/profile/:userId" element={<Profile />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={
@@ -140,9 +153,6 @@ const AppLayout = () => {
             </AdminRoute>
           } />
 
-          {/* Protected User Routes - accessible by both users and admins */}
-          <Route path="/bookmarks" element={<RequireAuth><BookmarkBlogs /></RequireAuth>} />
-          <Route path="/profile" element={<RequireAuth><UserProfile /></RequireAuth>} />
 
           <Route path="*" element={<ErrorPage />} />
         </Routes>

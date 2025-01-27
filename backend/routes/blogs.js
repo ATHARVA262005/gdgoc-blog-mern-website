@@ -297,19 +297,20 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }));
 
     // Format comments with proper user data and check if user liked each comment
-    const formattedComments = await Promise.all(blog.comments.map(async comment => {
-      const isCommentLiked = req.user ? comment.likes.includes(req.user.userId) : false;
+    const formattedComments = blog.comments.map(comment => {
+      const isCommentLiked = req.user ? comment.likes?.includes(req.user.userId) : false;
       
       return {
         ...comment,
         user: comment.user ? {
           _id: comment.user._id,
           username: comment.user.name,
-          profileImage: comment.user.profileImage?.url
+          profileImage: comment.user.profileImage?.url || DEFAULT_PROFILE_IMAGE
         } : null,
-        isLiked: isCommentLiked
+        isLiked: isCommentLiked,
+        likeCount: comment.likes?.length || 0
       };
-    }));
+    });
 
     res.json({
       success: true,
@@ -505,6 +506,45 @@ router.post('/:blogId/comments/:commentId/like', auth, async (req, res) => {
   } catch (error) {
     console.error('Error toggling comment like:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Simplify the comment like route to only handle blog comments
+router.post('/comments/:commentId/like', auth, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.userId;
+
+    const blog = await Blog.findOne({ 'comments._id': commentId });
+    if (!blog) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    const comment = blog.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    const likeIndex = comment.likes.indexOf(userId);
+    const newIsLiked = likeIndex === -1;
+
+    if (newIsLiked) {
+      comment.likes.push(userId);
+    } else {
+      comment.likes.splice(likeIndex, 1);
+    }
+
+    await blog.save();
+
+    res.json({
+      success: true,
+      commentId: comment._id,
+      isLiked: newIsLiked,
+      likeCount: comment.likes.length
+    });
+  } catch (error) {
+    console.error('Error toggling comment like:', error);
+    res.status(500).json({ message: 'Failed to toggle like' });
   }
 });
 

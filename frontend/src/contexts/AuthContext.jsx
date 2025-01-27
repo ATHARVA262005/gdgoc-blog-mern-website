@@ -11,33 +11,49 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const verifyToken = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+  const verifyToken = async () => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (!token || !storedUser) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const response = await api.get('/auth/verify-token');
-        if (response.data.success) {
-          setUser(response.data.user);
-          setIsAdmin(response.data.isAdmin || false);
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem('token');
-        }
-      } catch (error) {
-        console.error('Token verification failed:', error);
+    try {
+      const response = await api.get('/auth/verify-token');
+      if (response.data.success) {
+        // Parse the stored user data
+        const userData = JSON.parse(storedUser);
+        setUser(userData); // Set the complete user object
+        setIsAdmin(response.data.isAdmin || false);
+        setIsAuthenticated(true);
+      } else {
         localStorage.removeItem('token');
-      } finally {
-        setLoading(false);
+        localStorage.removeItem('user');
+        localStorage.removeItem('expiresAt');
+        setUser(null);
+        setIsAuthenticated(false);
       }
-    };
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('expiresAt');
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     verifyToken();
   }, []);
+
+  useEffect(() => {
+    console.log("AuthContext: Current user state:", user);
+  }, [user]);
 
   const adminLogin = () => {
     console.log('Setting admin status...');
@@ -51,9 +67,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = (userData, token) => {
+    // Ensure userData has all required fields
+    if (!userData || !userData.id) {
+      console.error('Invalid user data provided to login');
+      return;
+    }
+    
+    const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
     setUser(userData);
-    localStorage.setItem('token', token);
     setIsAuthenticated(true);
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('expiresAt', expiresAt.toString());
   };
 
   const logout = () => {
@@ -61,7 +86,8 @@ export const AuthProvider = ({ children }) => {
     setIsAdmin(false);
     setIsAuthenticated(false);
     localStorage.removeItem('token');
-    localStorage.removeItem('adminToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('expiresAt');
     navigate('/login');
   };
 
