@@ -8,6 +8,70 @@ const Like = require('../models/Like');
 const Admin = require('../models/Admin'); // Add this line
 const router = express.Router();
 
+// Get user's bookmarked blogs with full blog details
+router.get('/bookmarks', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Add error handling for empty bookmarks array
+    if (!user.bookmarks || user.bookmarks.length === 0) {
+      return res.json({
+        success: true,
+        bookmarks: []
+      });
+    }
+    
+    const bookmarkedBlogs = await Blog.find({
+      _id: { $in: user.bookmarks },
+      status: 'published'
+    })
+    .populate('author', 'username')
+    .select('title content category featuredImage createdAt stats author')
+    .sort({ createdAt: -1 })
+    .lean();
+
+    // Map blogs maintaining the order from user.bookmarks
+    const formattedBlogs = user.bookmarks
+      .map(bookmarkId => {
+        const blog = bookmarkedBlogs.find(b => b._id.toString() === bookmarkId.toString());
+        if (!blog) return null;
+        
+        return {
+          _id: blog._id,
+          title: blog.title,
+          content: blog.content,
+          category: blog.category,
+          featuredImage: blog.featuredImage,
+          createdAt: blog.createdAt,
+          stats: blog.stats || { likeCount: 0, commentCount: 0 },
+          author: {
+            _id: blog.author?._id,
+            username: blog.author?.username || 'GDG Admin'
+          }
+        };
+      })
+      .filter(Boolean); // Remove any null values
+
+    res.json({
+      success: true,
+      bookmarks: formattedBlogs
+    });
+  } catch (error) {
+    console.error('Error fetching bookmarks:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching bookmarks',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // Get trending blogs - Move this route to the top
 router.get('/trending', async (req, res) => {
   try {
@@ -610,25 +674,6 @@ router.post('/bookmarks-status', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error checking bookmark statuses'
-    });
-  }
-});
-
-// Get user's bookmarked blogs
-router.get('/bookmarks', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId)
-      .populate('bookmarks')
-      .select('bookmarks');
-
-    res.json({
-      success: true,
-      bookmarks: user.bookmarks
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching bookmarks' 
     });
   }
 });
