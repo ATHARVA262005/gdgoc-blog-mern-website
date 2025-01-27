@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://gdgocblog.vercel.app', // Update to your backend server's URL and port
+        target: 'https://gdgoc-blog-backend.vercel.app', // Update to your backend server's URL and port
         changeOrigin: true,
         secure: false,
         ws: true,
