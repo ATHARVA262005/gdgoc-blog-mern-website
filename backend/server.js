@@ -72,6 +72,25 @@ mongoose.connect(process.env.MONGODB_URI)
     });
   });
 
+// Add root test route
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'GDG Blog API is running',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Test endpoint working',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Add test route before other routes
 app.get('/api/test', (req, res) => {
   res.json({
@@ -105,11 +124,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Handle 404
+// Improve 404 handler with more details
 app.use((req, res) => {
+  console.log('404 Not Found:', req.method, req.url); // Add logging
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'Route not found',
+    path: req.url,
+    method: req.method
   });
 });
 
