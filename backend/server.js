@@ -35,8 +35,10 @@ const app = express();
 
 // Define allowed origins
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'https://gdgocblog.vercel.app'
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://gdgocblog.vercel.app',
+  'https://gdgoc-blog-backend.vercel.app'
 ];
 
 // Update CORS configuration
@@ -45,18 +47,21 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin); // Debug logging
+      callback(new Error('Not allowed by CORS'));
     }
-    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  maxAge: 86400 // Cache preflight request for 24 hours
 }));
 
-// Add pre-flight handling for all routes
+// Ensure OPTIONS requests are handled properly
 app.options('*', cors());
 
 app.use(express.json());
@@ -85,6 +90,12 @@ app.use('/api/blogs', blogRoutes); // Add this line
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      message: 'CORS origin not allowed'
+    });
+  }
   console.error(err.stack);
   res.status(500).json({
     success: false,
