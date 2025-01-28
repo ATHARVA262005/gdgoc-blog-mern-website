@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://yourdomain.com/sitemap.xml
+
 Allow: /blog/*
 Allow: /treasure
 Allow: /trending
@@ -19,8 +22,6 @@ Disallow: /login
 Disallow: /signup
 Disallow: /profile/*
 Disallow: /bookmarks
-
-Sitemap: https://gdgocblog.vercel.app/sitemap.xml
 
 # Rich results testing
 Allow: /structured-data/*

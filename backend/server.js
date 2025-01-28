@@ -123,19 +123,8 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// Add sitemap route before other routes
-app.get('/sitemap.xml', async (req, res) => {
-  try {
-    const hostname = process.env.FRONTEND_URL || 'https://gdgocblog.vercel.app';
-    const sitemap = await generateSitemap(hostname);
-    
-    res.header('Content-Type', 'application/xml');
-    res.send(sitemap);
-  } catch (error) {
-    console.error('Sitemap generation error:', error);
-    res.status(500).send('Error generating sitemap');
-  }
-});
+// Remove or comment out the sitemap route and related code
+// app.get('/sitemap.xml', async (req, res) => { ... });
 
 // Routes
 app.use('/api/auth', authRoutes);

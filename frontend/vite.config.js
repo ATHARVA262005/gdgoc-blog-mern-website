@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import { generateSitemap } from './src/utils/getSitemap';
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -12,5 +13,17 @@ export default defineConfig({
         secure: false
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        sitemap: './public/sitemap.xml'
+      }
+    }
+  },
+  // Add custom command to generate sitemap
+  optimizeDeps: {
+    entries: ['./src/utils/getSitemap.js']
   }
 });

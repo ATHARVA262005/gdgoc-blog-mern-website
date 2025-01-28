@@ -1,4 +1,6 @@
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 
 // Cache mechanism
 let sitemapCache = null;
@@ -55,6 +57,17 @@ export const generateSitemap = async (siteUrl = 'http://localhost:5173', apiUrl 
   `).join('')}
 </urlset>`;
 
+  // Write sitemap to public directory
+  const publicDir = path.join(process.cwd(), 'public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  fs.writeFileSync(
+    path.join(publicDir, 'sitemap.xml'),
+    sitemap
+  );
+
   // Update cache
   sitemapCache = sitemap;
   lastGenerated = Date.now();
@@ -68,3 +81,6 @@ setInterval(() => {
   const apiUrl = process.env.VITE_API_URL || 'http://localhost:5000/api';
   generateSitemap(siteUrl, apiUrl).catch(console.error);
 }, CACHE_DURATION);
+
+// Generate sitemap on startup
+generateSitemap().catch(console.error);

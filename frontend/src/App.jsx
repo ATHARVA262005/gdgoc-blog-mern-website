@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Sidebar from './components/Sidebar'
@@ -30,6 +30,7 @@ import Setting from './pages/Admin/Setting' // Add this import
 import AllComment from './pages/Admin/AllComments'
 import AllComments from './pages/Admin/AllComments';
 import { HelmetProvider } from 'react-helmet-async';
+import { generateSitemap } from './utils/getSitemap';
 
 // Protected Route Components
 const RequireAuth = ({ children }) => {
