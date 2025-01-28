@@ -95,48 +95,6 @@ const blogSchema = new mongoose.Schema({
   stats: {
     likeCount: { type: Number, default: 0 },
     commentCount: { type: Number, default: 0 }
-  },
-  seo: {
-    metaTitle: {
-      type: String,
-      trim: true
-    },
-    metaDescription: {
-      type: String,
-      trim: true
-    },
-    focusKeywords: [{
-      type: String,
-      trim: true
-    }],
-    canonicalUrl: {
-      type: String,
-      trim: true
-    },
-    slug: {
-      type: String,
-      unique: true,
-      required: true
-    },
-    focusKeyword: {
-      type: String,
-      trim: true
-    },
-    metaTags: [{
-      type: String,
-      trim: true
-    }],
-    structuredData: {
-      type: Map,
-      of: String
-    },
-    readingTime: {
-      type: Number,
-      default: 0
-    },
-    alternativeHeadline: String,
-    articleBody: String,
-    articleSection: String
   }
 }, {
   timestamps: true
@@ -155,58 +113,6 @@ blogSchema.pre('save', function(next) {
       .replace(/[^a-zA-Z0-9]/g, '-')
       .replace(/-+/g, '-');
   }
-  next();
-});
-
-// Generate SEO-friendly slug
-blogSchema.pre('save', function(next) {
-  if (!this.isModified('title')) return next();
-  
-  this.seo.slug = this.title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-  
-  next();
-});
-
-// Auto-generate meta title and description if not provided
-blogSchema.pre('save', function(next) {
-  if (!this.seo.metaTitle) {
-    this.seo.metaTitle = this.title;
-  }
-  
-  if (!this.seo.metaDescription) {
-    this.seo.metaDescription = this.content
-      .substr(0, 157)
-      .trim() + '...';
-  }
-  
-  next();
-});
-
-// Add pre-save middleware to generate SEO fields
-blogSchema.pre('save', function(next) {
-  if (!this.isModified('content') && !this.isModified('title')) return next();
-
-  // Calculate reading time
-  const wordsPerMinute = 200;
-  const wordCount = this.content.trim().split(/\s+/).length;
-  this.seo.readingTime = Math.ceil(wordCount / wordsPerMinute);
-
-  // Generate meta tags from content and tags
-  this.seo.metaTags = [
-    ...new Set([
-      ...this.tags,
-      this.category,
-      ...this.content.match(/(?<=#)\w+/g) || [], // Extract hashtags
-      ...this.title.split(' '),
-    ].map(tag => tag.toLowerCase()))
-  ];
-
-  // Generate article body (clean version for search engines)
-  this.seo.articleBody = this.content.replace(/<[^>]*>/g, ' ').trim();
-
   next();
 });
 
