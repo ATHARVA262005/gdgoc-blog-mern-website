@@ -335,30 +335,54 @@ const Home = () => {
   return (
     <>
       <SEO 
-        title="GDG PDEA Blog"
-        description="Official blog of Google Developer Group PDEA, Pune. Discover technical insights, tutorials, and community updates from PDEA's tech community."
-        keywords="GDG PDEA, Google Developer Group PDEA, PDEA tech blogs, PDEA coding community, Pune developer community"
+        title="GDG PDEA Blog - Developer Community & Tech Resources"
+        description="Discover technical articles, tutorials, and insights from the GDG PDEA community. Learn about web development, cloud computing, mobile apps, and more from experienced developers."
+        keywords="GDG PDEA, tech blog, developer community, programming tutorials, coding resources"
+        canonical={`${import.meta.env.VITE_APP_URL}/`}
+        openGraph={{
+          type: 'website',
+          url: `${import.meta.env.VITE_APP_URL}/`,
+          title: 'GDG PDEA Blog - Developer Community & Tech Resources',
+          description: 'Technical articles, tutorials, and insights from the GDG PDEA developer community.',
+          image: `${import.meta.env.VITE_APP_URL}/images/og-home.jpg`,
+          site_name: 'GDG PDEA Blog'
+        }}
+        twitter={{
+          card: 'summary_large_image',
+          site: '@gdgpdea',
+          title: 'GDG PDEA Blog - Developer Community & Tech Resources',
+          description: 'Technical articles, tutorials, and insights from the GDG PDEA developer community.',
+          image: `${import.meta.env.VITE_APP_URL}/images/og-home.jpg`
+        }}
         structuredData={{
           '@context': 'https://schema.org',
-          '@type': 'CollectionPage',
-          '@id': `${import.meta.env.VITE_APP_URL}/#webpage`,
+          '@type': 'WebSite',
           name: 'GDG PDEA Blog',
-          isPartOf: { '@id': `${import.meta.env.VITE_APP_URL}/#website` },
-          about: { '@id': `${import.meta.env.VITE_APP_URL}/#organization` },
+          url: `${import.meta.env.VITE_APP_URL}`,
+          description: 'Technical articles, tutorials, and insights from the GDG PDEA developer community.',
+          publisher: {
+            '@type': 'Organization',
+            name: 'GDG PDEA',
+            logo: {
+              '@type': 'ImageObject',
+              url: `${import.meta.env.VITE_APP_URL}/images/logo.png`
+            }
+          },
           mainEntity: {
-            '@type': 'ItemList',
-            itemListElement: [
-              {
-                '@type': 'ListItem',
-                position: 1,
-                item: {
-                  '@type': 'Article',
-                  name: featuredBlogs[0]?.title,
-                  url: `${import.meta.env.VITE_APP_URL}/blog/${featuredBlogs[0]?.slug}`
-                }
+            '@type': 'Blog',
+            name: 'GDG PDEA Blog',
+            blogPost: featuredBlogs.map(blog => ({
+              '@type': 'BlogPosting',
+              headline: blog.title,
+              description: blog.excerpt,
+              image: blog.featuredImage,
+              author: {
+                '@type': 'Person',
+                name: blog.author?.name || 'GDG PDEA'
               },
-              // Add more featured blogs...
-            ]
+              datePublished: blog.createdAt,
+              dateModified: blog.updatedAt
+            }))
           }
         }}
       />

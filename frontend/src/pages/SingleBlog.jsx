@@ -348,44 +348,66 @@ const SingleBlog = () => {
   return (
     <>
       <SEO 
-        title={blog.title}
-        description={blog.seo?.metaDescription || blog.content.slice(0, 160)}
-        image={blog.featuredImage}
-        article={true}
-        keywords={[
-          ...(blog.seo?.metaTags || []),
-          blog.category,
-          ...(blog.tags || [])
-        ].join(', ')}
-        author={blog.author?.name}
-        publishedAt={blog.createdAt}
-        modifiedAt={blog.updatedAt}
-        canonicalUrl={`${import.meta.env.VITE_APP_URL}/blog/${blog.slug}`}
+        title={`${blog.title} | GDG PDEA Blog`}
+        description={blog.excerpt || blog.content.slice(0, 160)}
+        keywords={[blog.category, ...(blog.tags || []), 'GDG PDEA', 'tech blog'].join(', ')}
+        canonical={`${import.meta.env.VITE_APP_URL}/blog/${blog.slug}`}
+        openGraph={{
+          type: 'article',
+          url: `${import.meta.env.VITE_APP_URL}/blog/${blog.slug}`,
+          title: blog.title,
+          description: blog.excerpt || blog.content.slice(0, 160),
+          image: blog.featuredImage,
+          site_name: 'GDG PDEA Blog',
+          article: {
+            publishedTime: blog.createdAt,
+            modifiedTime: blog.updatedAt,
+            authors: [blog.author?.name || 'GDG PDEA'],
+            tags: blog.tags
+          }
+        }}
+        twitter={{
+          card: 'summary_large_image',
+          site: '@gdgpdea',
+          title: blog.title,
+          description: blog.excerpt || blog.content.slice(0, 160),
+          image: blog.featuredImage
+        }}
         structuredData={{
           '@context': 'https://schema.org',
           '@type': 'BlogPosting',
+          mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': `${import.meta.env.VITE_APP_URL}/blog/${blog.slug}`
+          },
           headline: blog.title,
-          description: blog.seo?.metaDescription,
+          description: blog.excerpt || blog.content.slice(0, 160),
           image: blog.featuredImage,
           author: {
             '@type': 'Person',
-            name: blog.author?.name || 'GDG Admin'
+            name: blog.author?.name || 'GDG PDEA'
           },
           publisher: {
             '@type': 'Organization',
-            name: 'GDG Blog',
+            name: 'GDG PDEA',
             logo: {
               '@type': 'ImageObject',
-              url: `${import.meta.env.VITE_APP_URL}/logo.png`
+              url: `${import.meta.env.VITE_APP_URL}/images/logo.png`
             }
           },
           datePublished: blog.createdAt,
           dateModified: blog.updatedAt,
-          mainEntityOfPage: `${import.meta.env.VITE_APP_URL}/blog/${blog.slug}`,
+          articleBody: blog.content.replace(/<[^>]*>/g, ''),
           keywords: blog.tags?.join(', '),
-          articleSection: blog.category,
-          wordCount: blog.content.split(/\s+/).length,
-          timeRequired: `PT${blog.seo?.readingTime}M`
+          comments: comments.map(comment => ({
+            '@type': 'Comment',
+            text: comment.content,
+            author: {
+              '@type': 'Person',
+              name: comment.user?.username || 'Anonymous'
+            },
+            datePublished: comment.createdAt
+          }))
         }}
       />
       
