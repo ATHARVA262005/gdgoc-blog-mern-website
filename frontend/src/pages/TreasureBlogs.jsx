@@ -187,16 +187,11 @@ const TreasureBlogs = () => {
   return (
     <>
       <SEO 
-        title={searchQuery ? `Search: ${searchQuery} - Blog Treasure` : "Blog Treasure"}
-        description={
-          searchQuery
-            ? `Search results for "${searchQuery}" - Explore our collection of tech articles and tutorials`
-            : "Explore our complete collection of tech articles, tutorials, and insights from the GDG community"
-        }
-        keywords={`tech blogs, programming tutorials, ${searchQuery || ''}, GDG articles, software development`}
-        image={`${import.meta.env.VITE_APP_URL}/images/blog-treasure-og.jpg`}
+        title="Blog Treasure"
+        description="Explore our complete collection of technical articles, tutorials, and insights from the GDG PDEA community. Find valuable resources for developers of all levels."
+        keywords="tech blog collection, programming tutorials, developer resources, coding articles"
       />
-
+      
       <div className="min-h-screen bg-gray-50">
         {toast.show && (
           <Toast 

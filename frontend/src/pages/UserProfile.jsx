@@ -8,6 +8,7 @@ import ProfilePictureModal from '../components/ProfilePictureModal';
 import EditProfileModal from '../components/EditProfileModal';
 import Toast from '../components/Toast';
 import axios from 'axios';
+import SEO from '../components/SEO';
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -233,143 +234,151 @@ const UserProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="px-4 sm:px-6 lg:px-8 mb-8 md:mb-0 py-6 sm:py-8 lg:py-12">
-        {/* Profile Header - Made Responsive */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-6 mb-4 sm:mb-6">
-            <div className="flex-1 w-full">
-              <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-8">
-                {/* Profile Image */}
-                <div className="relative group mx-auto sm:mx-0">
-                  <img 
-                    src={userData.profileImage?.url || '/default-avatar.png'} 
-                    alt={userData.name} 
-                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover cursor-pointer"
-                    onClick={() => setIsModalOpen(true)}
-                  />
-                </div>
+    <>
+      <SEO 
+        title="My Profile"
+        description="Manage your GDG PDEA blog profile, view your comments, and update your personal information. Connect with the GDG PDEA community through your personalized profile page."
+        keywords="GDG PDEA profile, user dashboard, tech community profile, developer profile"
+      />
+      
+      <div className="min-h-screen bg-gray-50">
+        <div className="px-4 sm:px-6 lg:px-8 mb-8 md:mb-0 py-6 sm:py-8 lg:py-12">
+          {/* Profile Header - Made Responsive */}
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-6 mb-4 sm:mb-6">
+              <div className="flex-1 w-full">
+                <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-8">
+                  {/* Profile Image */}
+                  <div className="relative group mx-auto sm:mx-0">
+                    <img 
+                      src={userData.profileImage?.url || '/default-avatar.png'} 
+                      alt={userData.name} 
+                      className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover cursor-pointer"
+                      onClick={() => setIsModalOpen(true)}
+                    />
+                  </div>
 
-                {/* User Info */}
-                <div className="flex-1 text-center sm:text-left">
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-2">{userData.name}</h1>
-                  <p className="text-gray-600 mb-4 text-sm sm:text-base">{userData.bio || 'No bio added yet'}</p>
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <Mail size={14} className="sm:w-4 sm:h-4" />
-                      <span>{userData.email}</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <Calendar size={14} className="sm:w-4 sm:h-4" />
-                      <span>Joined {formatJoinDate(userData.createdAt)}</span>
-                    </div>
-                    <div className="flex flex-wrap justify-center sm:justify-start gap-3">
-                      {renderSocialLinks()}
+                  {/* User Info */}
+                  <div className="flex-1 text-center sm:text-left">
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2">{userData.name}</h1>
+                    <p className="text-gray-600 mb-4 text-sm sm:text-base">{userData.bio || 'No bio added yet'}</p>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <Mail size={14} className="sm:w-4 sm:h-4" />
+                        <span>{userData.email}</span>
+                      </div>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <Calendar size={14} className="sm:w-4 sm:h-4" />
+                        <span>Joined {formatJoinDate(userData.createdAt)}</span>
+                      </div>
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+                        {renderSocialLinks()}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg text-sm"
-            >
-              <Edit2 size={16} />
-              <span>Edit Profile</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile-only Buttons - Updated with handler */}
-        <div className="block sm:hidden mb-6">
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={handleBookmarksClick}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-white rounded-lg shadow-sm text-gray-700"
-            >
-              <Bookmark size={16} />
-              <span>Bookmarks</span>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-white rounded-lg shadow-sm text-red-600"
-            >
-              <LogOut size={16} />
-              <span>Logout</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Comments Section - Made Responsive */}
-        <div className="px-0 sm:px-6 lg:px-8">
-          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">My Comments</h2>
-          {userComments.length > 0 ? (
-            <div className="space-y-4 sm:space-y-6">
-              {userComments.map(comment => (
-                <div key={comment._id} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <Link 
-                    to={`/blog/${comment.blogId}`} 
-                    className="block mb-3 sm:mb-4"
-                  >
-                    <h3 className="text-base sm:text-lg font-semibold text-blue-600 hover:text-blue-700 mb-2">
-                      {comment.blogTitle}
-                    </h3>
-                    <div className="prose prose-sm max-w-none text-gray-600 text-sm sm:text-base">
-                      {comment.content}
-                    </div>
-                  </Link>
-                  <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
-                    <span>{formatDate(comment.createdAt)}</span>
-                    <Link 
-                      to={`/blog/${comment.blogId}#comment-${comment._id}`}
-                      className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    >
-                      View Discussion
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 sm:py-12 bg-white rounded-xl shadow-sm">
-              <p className="text-gray-500 mb-4 text-sm sm:text-base">No comments yet</p>
-              <Link 
-                to="/treasure" 
-                className="text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base"
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg text-sm"
               >
-                Browse blogs to start commenting
-              </Link>
+                <Edit2 size={16} />
+                <span>Edit Profile</span>
+              </button>
             </div>
-          )}
+          </div>
+
+          {/* Mobile-only Buttons - Updated with handler */}
+          <div className="block sm:hidden mb-6">
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={handleBookmarksClick}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-white rounded-lg shadow-sm text-gray-700"
+              >
+                <Bookmark size={16} />
+                <span>Bookmarks</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-white rounded-lg shadow-sm text-red-600"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Comments Section - Made Responsive */}
+          <div className="px-0 sm:px-6 lg:px-8">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">My Comments</h2>
+            {userComments.length > 0 ? (
+              <div className="space-y-4 sm:space-y-6">
+                {userComments.map(comment => (
+                  <div key={comment._id} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <Link 
+                      to={`/blog/${comment.blogId}`} 
+                      className="block mb-3 sm:mb-4"
+                    >
+                      <h3 className="text-base sm:text-lg font-semibold text-blue-600 hover:text-blue-700 mb-2">
+                        {comment.blogTitle}
+                      </h3>
+                      <div className="prose prose-sm max-w-none text-gray-600 text-sm sm:text-base">
+                        {comment.content}
+                      </div>
+                    </Link>
+                    <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+                      <span>{formatDate(comment.createdAt)}</span>
+                      <Link 
+                        to={`/blog/${comment.blogId}#comment-${comment._id}`}
+                        className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                      >
+                        View Discussion
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 sm:py-12 bg-white rounded-xl shadow-sm">
+                <p className="text-gray-500 mb-4 text-sm sm:text-base">No comments yet</p>
+                <Link 
+                  to="/treasure" 
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base"
+                >
+                  Browse blogs to start commenting
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
+
+        {showToast && (
+          <Toast
+            message={toastMessage}
+            type="success"
+            onClose={() => setShowToast(false)}
+          />
+        )}
+
+        {isModalOpen && (
+          <ProfilePictureModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSelect={handleProfilePictureChange}
+            currentImage={userData.profileImage?.url}
+          />
+        )}
+
+        {isEditModalOpen && (
+          <EditProfileModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSave={handleProfileEdit}
+            userData={userData}
+          />
+        )}
       </div>
-
-      {showToast && (
-        <Toast
-          message={toastMessage}
-          type="success"
-          onClose={() => setShowToast(false)}
-        />
-      )}
-
-      {isModalOpen && (
-        <ProfilePictureModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSelect={handleProfilePictureChange}
-          currentImage={userData.profileImage?.url}
-        />
-      )}
-
-      {isEditModalOpen && (
-        <EditProfileModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onSave={handleProfileEdit}
-          userData={userData}
-        />
-      )}
-    </div>
+    </>
   );
 };
 

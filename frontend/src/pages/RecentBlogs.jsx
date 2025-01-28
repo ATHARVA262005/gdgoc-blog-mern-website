@@ -3,6 +3,7 @@ import { ThumbsUp, MessageCircle, Bookmark, Clock } from 'lucide-react';
 import axios from 'axios';
 import { getVisitedTime } from '../utils/recentlyViewed';
 import { useNavigate } from 'react-router-dom';
+import SEO from '../components/SEO';
 
 const stripHtmlTags = (html) => {
   if (!html) return '';
@@ -157,109 +158,117 @@ const RecentBlogs = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 mb-8 md:mb-0">
-        {/* Header - Made responsive */}
-        <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
-          <Clock className="text-blue-600" size={24} sm={28} lg={32} />
-          <h1 className="text-2xl sm:text-3xl font-bold">Recently Visited</h1>
-        </div>
-        
-        <div className="space-y-4 sm:space-y-6">
-          {blogs.map(blog => (
-            <div 
-              key={blog.id} 
-              onClick={() => handleBlogClick(blog.id)}
-              className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-            >
-              <div className="flex flex-col sm:flex-row">
-                {/* Image Container */}
-                <div className="sm:w-1/3 relative">
-                  <img 
-                    src={blog.image} 
-                    alt={blog.title} 
-                    className="w-full h-48 sm:h-full object-cover"
-                  />
-                  <div className="absolute top-2 sm:top-4 right-2 sm:right-4 flex items-center gap-2">
-                    <span className="px-2 sm:px-3 py-1 bg-black/50 text-white rounded-full text-xs sm:text-sm backdrop-blur-sm">
-                      {blog.visitedAt}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content Container */}
-                <div className="p-4 sm:p-6 sm:w-2/3">
-                  {/* Author Info */}
-                  <div className="flex items-center gap-3 mb-3 sm:mb-4">
+    <>
+      <SEO 
+        title="Recently Viewed Blogs"
+        description="View your reading history and recently visited articles on GDG PDEA blog. Keep track of the technical content you've explored and easily revisit valuable resources."
+        keywords="reading history, recent tech articles, viewed blogs, browsing history"
+      />
+      
+      <div className="min-h-screen bg-gray-50">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 mb-8 md:mb-0">
+          {/* Header - Made responsive */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+            <Clock className="text-blue-600" size={24} sm={28} lg={32} />
+            <h1 className="text-2xl sm:text-3xl font-bold">Recently Visited</h1>
+          </div>
+          
+          <div className="space-y-4 sm:space-y-6">
+            {blogs.map(blog => (
+              <div 
+                key={blog.id} 
+                onClick={() => handleBlogClick(blog.id)}
+                className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+              >
+                <div className="flex flex-col sm:flex-row">
+                  {/* Image Container */}
+                  <div className="sm:w-1/3 relative">
                     <img 
-                      src={blog.authorImage} 
-                      alt={blog.author} 
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full" 
+                      src={blog.image} 
+                      alt={blog.title} 
+                      className="w-full h-48 sm:h-full object-cover"
                     />
-                    <div>
-                      <p className="font-medium text-xs sm:text-sm">{blog.author}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-500">{blog.date}</p>
+                    <div className="absolute top-2 sm:top-4 right-2 sm:right-4 flex items-center gap-2">
+                      <span className="px-2 sm:px-3 py-1 bg-black/50 text-white rounded-full text-xs sm:text-sm backdrop-blur-sm">
+                        {blog.visitedAt}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Blog Title and Excerpt */}
-                  <h3 className="font-bold text-lg sm:text-xl mb-2">{blog.title}</h3>
-                  <p className="text-gray-600 text-xs sm:text-sm mb-4 line-clamp-2 sm:line-clamp-3">
-                    {blog.excerpt}
-                  </p>
-
-                  {/* Footer: Category and Interactions */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
-                    <span className="px-2 sm:px-3 py-1 rounded-full bg-gray-100 text-gray-600">
-                      {blog.category}
-                    </span>
-                    
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <button 
-                        onClick={(e) => handleLikeClick(e, blog.id)}
-                        className={`flex items-center gap-1 ${
-                          likesStatus[blog.id] 
-                            ? 'text-blue-600 font-medium' 
-                            : 'text-gray-500 hover:text-blue-600'
-                        }`}
-                      >
-                        <ThumbsUp 
-                          size={14} 
-                          className={`sm:w-4 sm:h-4 ${likesStatus[blog.id] ? 'fill-current' : ''}`} 
-                        />
-                        <span>{blog.likes}</span>
-                      </button>
-
-                      <div className="flex items-center gap-1">
-                        <MessageCircle size={14} className="sm:w-4 sm:h-4" />
-                        <span>{blog.comments}</span>
+                  {/* Content Container */}
+                  <div className="p-4 sm:p-6 sm:w-2/3">
+                    {/* Author Info */}
+                    <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                      <img 
+                        src={blog.authorImage} 
+                        alt={blog.author} 
+                        className="w-6 h-6 sm:w-8 sm:h-8 rounded-full" 
+                      />
+                      <div>
+                        <p className="font-medium text-xs sm:text-sm">{blog.author}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500">{blog.date}</p>
                       </div>
+                    </div>
 
-                      <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <Bookmark size={14} className="sm:w-4 sm:h-4" />
-                      </button>
+                    {/* Blog Title and Excerpt */}
+                    <h3 className="font-bold text-lg sm:text-xl mb-2">{blog.title}</h3>
+                    <p className="text-gray-600 text-xs sm:text-sm mb-4 line-clamp-2 sm:line-clamp-3">
+                      {blog.excerpt}
+                    </p>
+
+                    {/* Footer: Category and Interactions */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
+                      <span className="px-2 sm:px-3 py-1 rounded-full bg-gray-100 text-gray-600">
+                        {blog.category}
+                      </span>
+                      
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <button 
+                          onClick={(e) => handleLikeClick(e, blog.id)}
+                          className={`flex items-center gap-1 ${
+                            likesStatus[blog.id] 
+                              ? 'text-blue-600 font-medium' 
+                              : 'text-gray-500 hover:text-blue-600'
+                          }`}
+                        >
+                          <ThumbsUp 
+                            size={14} 
+                            className={`sm:w-4 sm:h-4 ${likesStatus[blog.id] ? 'fill-current' : ''}`} 
+                          />
+                          <span>{blog.likes}</span>
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <MessageCircle size={14} className="sm:w-4 sm:h-4" />
+                          <span>{blog.comments}</span>
+                        </div>
+
+                        <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors">
+                          <Bookmark size={14} className="sm:w-4 sm:h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Load More Button */}
-        {hasMore && (
-          <div className="mt-6 sm:mt-8 text-center">
-            <button
-              onClick={loadMore}
-              disabled={loading}
-              className="px-4 sm:px-6 py-2 bg-blue-600 text-white text-sm sm:text-base rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? 'Loading...' : 'Load More'}
-            </button>
+            ))}
           </div>
-        )}
+
+          {/* Load More Button */}
+          {hasMore && (
+            <div className="mt-6 sm:mt-8 text-center">
+              <button
+                onClick={loadMore}
+                disabled={loading}
+                className="px-4 sm:px-6 py-2 bg-blue-600 text-white text-sm sm:text-base rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

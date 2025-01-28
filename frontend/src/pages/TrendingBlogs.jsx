@@ -122,8 +122,8 @@ const TrendingBlogs = () => {
     <>
       <SEO 
         title="Trending Blogs"
-        description="Discover the most popular and engaging tech articles from the GDG community. Stay updated with trending topics in software development, cloud computing, and more."
-        keywords="trending tech blogs, popular programming articles, top developer stories, GDG trending posts"
+        description="Discover the most popular and trending tech articles from the GDG PDEA community. Stay updated with the hottest topics in software development, cloud computing, and emerging technologies."
+        keywords="trending tech blogs, popular programming articles, top developer stories, hot tech topics"
         image={`${import.meta.env.VITE_APP_URL}/images/trending-blogs-og.jpg`}
       />
 
