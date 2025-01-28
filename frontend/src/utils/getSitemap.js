@@ -1,44 +1,70 @@
 import axios from 'axios';
 
-export async function generateSitemap() {
+// Cache mechanism
+let sitemapCache = null;
+let lastGenerated = null;
+const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
+
+const fetchDynamicUrls = async (apiUrl) => {
   try {
-    const baseUrl = import.meta.env.VITE_APP_URL;
-    
-    // Fetch blogs from your API
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/blogs`);
-    const blogs = response.data.blogs || [];
+    // Fetch blogs
+    const blogsResponse = await fetch(`${apiUrl}/blogs`);
+    const blogsData = await blogsResponse.json();
+    const blogUrls = blogsData.blogs.map(blog => `/blog/${blog._id}`);
 
-    // Static routes
-    const staticRoutes = [
-      '',
-      '/treasure',
-      '/trending',
-      '/recent',
-    ];
+    // Fetch users
+    const usersResponse = await fetch(`${apiUrl}/users`);
+    const usersData = await usersResponse.json();
+    const userUrls = usersData.users.map(user => `/profile/${user._id}`);
 
-    // Generate XML
-    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+    return [...blogUrls, ...userUrls];
+  } catch (error) {
+    console.error('Error fetching dynamic URLs:', error);
+    return [];
+  }
+};
+
+// Static routes that should always be in the sitemap
+const staticRoutes = [
+  '/',
+  '/trending',
+  '/treasure',
+  '/recent',
+  '/login',
+  '/signup'
+];
+
+export const generateSitemap = async (siteUrl = 'http://localhost:5173', apiUrl = 'http://localhost:5000/api') => {
+  // Return cached version if valid
+  if (sitemapCache && lastGenerated && (Date.now() - lastGenerated) < CACHE_DURATION) {
+    return sitemapCache;
+  }
+
+  const dynamicUrls = await fetchDynamicUrls(apiUrl);
+  const allUrls = [...staticRoutes, ...dynamicUrls];
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  ${staticRoutes.map(route => `
+  ${allUrls.map(url => `
     <url>
-      <loc>${baseUrl}${route}</loc>
+      <loc>${siteUrl}${url}</loc>
+      <lastmod>${new Date().toISOString()}</lastmod>
       <changefreq>daily</changefreq>
-      <priority>${route === '' ? '1.0' : '0.8'}</priority>
-    </url>
-  `).join('')}
-  ${blogs.map(blog => `
-    <url>
-      <loc>${baseUrl}/blog/${blog._id}</loc>
-      <lastmod>${blog.updatedAt}</lastmod>
-      <changefreq>weekly</changefreq>
-      <priority>0.6</priority>
+      <priority>${url === '/' ? '1.0' : '0.8'}</priority>
     </url>
   `).join('')}
 </urlset>`;
 
-    return sitemap.trim();
-  } catch (error) {
-    console.error('Error generating sitemap:', error);
-    throw error;
-  }
-}
+  // Update cache
+  sitemapCache = sitemap;
+  lastGenerated = Date.now();
+
+  return sitemap;
+};
+
+// Auto-refresh cache periodically
+setInterval(() => {
+  const siteUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
+  const apiUrl = process.env.VITE_API_URL || 'http://localhost:5000/api';
+  generateSitemap(siteUrl, apiUrl).catch(console.error);
+}, CACHE_DURATION);
