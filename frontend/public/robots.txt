@@ -20,7 +20,7 @@ Disallow: /signup
 Disallow: /profile/*
 Disallow: /bookmarks
 
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://gdgocblog.vercel.app/sitemap.xml
 
 # Rich results testing
 Allow: /structured-data/*
