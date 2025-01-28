@@ -5,6 +5,7 @@ import axios from 'axios';
 import BlogCard from '../components/BlogCard';
 import { blogApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getBlogs, getFeaturedBlogs } from '../services/blogService';
 
 const FeaturedPost = ({ post, onClick }) => (
   <div 
@@ -169,6 +170,8 @@ const Home = () => {
   const navigate = useNavigate();
   const { user } = useAuth(); // Add this line to get auth status
 
+  
+
   // Add handlers for blog interactions
   const handleBlogClick = (blogId) => {
     navigate(`/blog/${blogId}`);
@@ -282,37 +285,15 @@ const Home = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const requests = [
-          axios.get(`${import.meta.env.VITE_API_URL}/blogs`),
-          axios.get(`${import.meta.env.VITE_API_URL}/blogs/featured`),
-        ];
+        setError(null);
 
-        // Add likes status request if user is logged in
-        const token = localStorage.getItem('token');
-        if (user && token) {
-          const responses = await Promise.all(requests);
-          const blogIds = responses[0].data.blogs.map(blog => blog._id);
-          
-          // Fetch like statuses for all blogs
-          const likesResponse = await axios.post(
-            'http://localhost:5000/api/blogs/likes-status',
-            { blogIds },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
+        const [blogsData, featuredBlogsData] = await Promise.all([
+          getBlogs(),
+          getFeaturedBlogs()
+        ]);
 
-          // Merge like status with blog data
-          const blogsWithLikes = responses[0].data.blogs.map(blog => ({
-            ...blog,
-            isLiked: likesResponse.data.likeStatuses[blog._id] || false
-          }));
-
-          setBlogs(blogsWithLikes);
-          setFeaturedBlogs(responses[1].data.featuredBlogs);
-        } else {
-          const [blogsRes, featuredRes] = await Promise.all(requests);
-          setBlogs(blogsRes.data.blogs);
-          setFeaturedBlogs(featuredRes.data.featuredBlogs);
-        }
+        setBlogs(blogsData.blogs || []);
+        setFeaturedBlogs(featuredBlogsData.featuredBlogs || []);
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to fetch blogs. Please try again later.');

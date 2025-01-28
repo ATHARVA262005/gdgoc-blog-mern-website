@@ -18,11 +18,13 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
+  const isAuthorized = currentUser || localStorage.getItem('adminToken');
+
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
         
         // Fetch both profile and comments
         const [profileResponse, commentsResponse] = await Promise.all([
@@ -103,6 +105,33 @@ const Profile = () => {
       })
       .filter(Boolean);
   };
+
+  if (!isAuthorized) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <h2 className="text-2xl font-bold mb-4">Login Required</h2>
+          <p className="text-gray-600 mb-6">
+            Please login first to view user profiles.
+          </p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => navigate('/login')}
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+            >
+              Login
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="flex-1 border border-gray-300 py-2 px-4 rounded hover:bg-gray-50 transition-colors"
+            >
+              Go Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

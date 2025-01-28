@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -23,28 +23,41 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.get('/auth/verify-token');
       if (response.data.success) {
-        // Parse the stored user data
         const userData = JSON.parse(storedUser);
-        setUser(userData); // Set the complete user object
+        setUser(userData);
         setIsAdmin(response.data.isAdmin || false);
         setIsAuthenticated(true);
-      } else {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('expiresAt');
-        setUser(null);
-        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Token verification failed:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('expiresAt');
-      setUser(null);
-      setIsAuthenticated(false);
+      // Don't clear user data on verification failure
+      // This prevents logout on network issues
     } finally {
       setLoading(false);
     }
+  };
+
+  const refreshSession = async () => {
+    try {
+      const response = await api.post('/auth/refresh-token');
+      if (response.data.success) {
+        const { token, expiresIn } = response.data;
+        const expiresAt = Date.now() + expiresIn;
+        localStorage.setItem('token', token);
+        localStorage.setItem('expiresAt', expiresAt.toString());
+      }
+    } catch (error) {
+      console.error('Failed to refresh session:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('expiresAt');
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsAdmin(false);
   };
 
   useEffect(() => {
@@ -55,10 +68,49 @@ export const AuthProvider = ({ children }) => {
     console.log("AuthContext: Current user state:", user);
   }, [user]);
 
-  const adminLogin = () => {
-    console.log('Setting admin status...');
-    setIsAdmin(true);
+  const checkTokenExpiration = () => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expiryTime = payload.exp * 1000; // Convert to milliseconds
+      const currentTime = Date.now();
+
+      if (currentTime >= expiryTime) {
+        // Token has expired
+        adminLogout();
+        navigate('/admin/login');
+      } else {
+        // Set timeout to logout when token expires
+        const timeUntilExpiry = expiryTime - currentTime;
+        setTimeout(() => {
+          adminLogout();
+          navigate('/admin/login');
+          alert('Your session has expired. Please login again.');
+        }, timeUntilExpiry);
+      }
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+    }
   };
+
+  useEffect(() => {
+    checkTokenExpiration();
+  }, []);
+
+  useEffect(() => {
+    const adminToken = localStorage.getItem('adminToken');
+    if (adminToken) {
+      setIsAdmin(true);
+    }
+  }, []);
+
+  const adminLogin = useCallback(async (token) => {
+    localStorage.setItem('adminToken', token);
+    setIsAdmin(true);
+    checkTokenExpiration(); // Set up expiration timer after login
+  }, [navigate]);
 
   const adminLogout = () => {
     setIsAdmin(false);
@@ -67,18 +119,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = (userData, token) => {
-    // Ensure userData has all required fields
     if (!userData || !userData.id) {
       console.error('Invalid user data provided to login');
       return;
     }
     
-    const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
     setUser(userData);
     setIsAuthenticated(true);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('expiresAt', expiresAt.toString());
   };
 
   const logout = () => {

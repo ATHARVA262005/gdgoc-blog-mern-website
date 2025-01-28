@@ -9,8 +9,29 @@ const Admin = require('../models/Admin'); // Add this line
 const Comment = require('../models/Comment'); // Add this line
 const router = express.Router();
 
+// Use optional auth for public routes
+router.get('/', auth.optional, async (req, res) => {
+  try {
+    const blogs = await Blog.find({ status: 'published' })
+      .sort({ createdAt: -1 })
+      .populate('author', 'name profileImage');
+      
+    // Add personalization if user is authenticated
+    if (req.user) {
+      // Add user-specific data like isLiked, isBookmarked
+      blogs = await addUserInteractions(blogs, req.user.userId);
+    }
+
+    res.json({ success: true, blogs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
+
 // Add this new endpoint before other routes
-router.get('/featured', async (req, res) => {
+router.get('/featured', auth.optional, async (req, res) => {
   try {
     const featuredBlogs = await Blog.find({ 
       status: 'published',
@@ -20,6 +41,11 @@ router.get('/featured', async (req, res) => {
     .sort({ createdAt: -1 })
     .limit(3)
     .lean();
+
+    // Add personalization if user is authenticated
+    if (req.user) {
+      featuredBlogs = await addUserInteractions(featuredBlogs, req.user.userId);
+    }
 
     const formattedBlogs = featuredBlogs.map(blog => ({
       _id: blog._id,
@@ -217,34 +243,23 @@ router.get('/trending', async (req, res) => {
 });
 
 // Public routes (no auth required)
-router.get('/', async (req, res) => {
+router.get('/', adminAuth, async (req, res) => {
   try {
-    const blogs = await Blog.find({ status: 'published' })
-      .populate('author', 'username profileImage')
+    const limit = parseInt(req.query.limit) || 100;
+    const blogs = await Blog.find()
+      .populate('author', 'username')
       .sort({ createdAt: -1 })
-      .limit(12) // Ensure we get enough blogs for both latest and recommended
+      .limit(limit)
       .lean();
-
-    // Format the response
-    const formattedBlogs = blogs.map(blog => ({
-      _id: blog._id,
-      title: blog.title,
-      content: blog.content,
-      category: blog.category,
-      featuredImage: blog.featuredImage,
-      createdAt: blog.createdAt,
-      isFeatured: blog.isFeatured,
-      author: {
-        _id: blog.author?._id,
-        username: blog.author?.username || 'Anonymous',
-        profileImage: blog.author?.profileImage
-      },
-      stats: blog.stats || { likeCount: 0, commentCount: 0 }
-    }));
 
     res.json({
       success: true,
-      blogs: formattedBlogs
+      blogs: blogs.map(blog => ({
+        ...blog,
+        status: blog.status || 'draft',
+        views: blog.views || { total: 0 },
+        isFeatured: blog.isFeatured || false
+      }))
     });
   } catch (error) {
     console.error('Error fetching blogs:', error);
@@ -359,26 +374,42 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-router.patch('/:id', auth, async (req, res) => {
+// Update the patch route
+router.patch('/:id', adminAuth, async (req, res) => {
   try {
-    const blog = await Blog.findOneAndUpdate(
-      { _id: req.params.id, author: req.admin._id },
-      req.body,
-      { new: true }
-    );
+    const updates = Object.keys(req.body);
+    const allowedUpdates = ['title', 'content', 'category', 'tags', 'featuredImage', 'status', 'isFeatured'];
+    
+    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+    
+    if (!isValidOperation) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid updates'
+      });
+    }
 
+    const blog = await Blog.findById(req.params.id);
+    
     if (!blog) {
       return res.status(404).json({
         success: false,
-        message: 'Blog not found or unauthorized'
+        message: 'Blog not found'
       });
     }
+
+    updates.forEach(update => {
+      blog[update] = req.body[update];
+    });
+
+    await blog.save();
 
     res.json({
       success: true,
       blog
     });
   } catch (error) {
+    console.error('Blog update error:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating blog'
@@ -386,28 +417,45 @@ router.patch('/:id', auth, async (req, res) => {
   }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+// Update the delete route
+router.delete('/:id', adminAuth, async (req, res) => {
   try {
-    const blog = await Blog.findOneAndDelete({
-      _id: req.params.id,
-      author: req.admin._id
-    });
+    console.log('Delete request for blog:', req.params.id);
+    console.log('Admin ID:', req.admin._id);
+
+    const blog = await Blog.findOne({ _id: req.params.id });
 
     if (!blog) {
       return res.status(404).json({
         success: false,
-        message: 'Blog not found or unauthorized'
+        message: 'Blog not found'
       });
     }
+
+    // Delete the blog
+    await Blog.deleteOne({ _id: req.params.id });
+
+    // Clean up related data (optional)
+    await Promise.all([
+      // Delete all likes for this blog
+      Like.deleteMany({ blog: req.params.id }),
+      // Remove blog from user bookmarks
+      User.updateMany(
+        { bookmarks: req.params.id },
+        { $pull: { bookmarks: req.params.id } }
+      )
+    ]);
 
     res.json({
       success: true,
       message: 'Blog deleted successfully'
     });
   } catch (error) {
+    console.error('Blog delete error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting blog'
+      message: 'Error deleting blog',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -551,19 +599,28 @@ router.post('/comments/:commentId/like', auth, async (req, res) => {
 // Get admin blogs (including drafts)
 router.get('/admin', adminAuth, async (req, res) => {
   try {
-    // Remove status filter to get all posts including drafts
     const blogs = await Blog.find()
       .populate('author', 'username')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!blogs) {
+      return res.json({
+        success: true,
+        blogs: []
+      });
+    }
 
     res.json({
       success: true,
       blogs
     });
   } catch (error) {
+    console.error('Error fetching admin blogs:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching admin blogs'
+      message: 'Error fetching admin blogs',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -571,8 +628,9 @@ router.get('/admin', adminAuth, async (req, res) => {
 // Get single blog by ID (admin route)
 router.get('/:id', adminAuth, async (req, res) => {
   try {
-    const blog = await Blog.findOne({ _id: req.params.id })
-      .populate('author', 'username');
+    const blog = await Blog.findById(req.params.id)
+      .populate('author', 'username')
+      .lean();  // Add lean() for better performance
 
     if (!blog) {
       return res.status(404).json({
@@ -583,9 +641,14 @@ router.get('/:id', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      blog
+      blog: {
+        ...blog,
+        tags: blog.tags || [],
+        status: blog.status || 'draft'
+      }
     });
   } catch (error) {
+    console.error('Error fetching blog:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching blog'
@@ -649,51 +712,71 @@ router.post('/:id/view', async (req, res) => {
 // Enhanced analytics endpoint
 router.get('/analytics/views', adminAuth, async (req, res) => {
   try {
-    const [totalStats, deviceStats, timeRangeStats] = await Promise.all([
+    const [totalStats, timeRangeStats] = await Promise.all([
+      // Get total stats
       Blog.aggregate([
-        { $group: {
-          _id: null,
-          totalViews: { $sum: '$views.total' },
-          uniqueViews: { $sum: '$views.unique' },
-          totalPosts: { $sum: 1 }
-        }}
-      ]),
-      Blog.aggregate([
-        { $unwind: '$views.history' },
-        { $group: {
-          _id: null,
-          desktop: { $sum: '$views.history.deviceTypes.desktop' },
-          mobile: { $sum: '$views.history.deviceTypes.mobile' },
-          tablet: { $sum: '$views.history.deviceTypes.tablet' }
-        }}
-      ]),
-      Blog.aggregate([
-        { $unwind: '$views.history' },
-        { $match: {
-          'views.history.date': {
-            $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        {
+          $group: {
+            _id: null,
+            totalViews: { $sum: '$views.total' },
+            uniqueViews: { $sum: '$views.unique' },
+            totalPosts: { $sum: 1 },
+            totalLikes: { $sum: '$stats.likeCount' },
+            totalComments: { $sum: '$stats.commentCount' }
           }
-        }},
-        { $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$views.history.date' }},
-          views: { $sum: '$views.history.count' },
-          uniqueViews: { $sum: '$views.history.uniqueCount' }
-        }},
-        { $sort: { '_id': 1 }}
+        }
+      ]),
+
+      // Get time range stats (last 30 days)
+      Blog.aggregate([
+        { $unwind: '$views.history' },
+        {
+          $match: {
+            'views.history.date': {
+              $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$views.history.date' }},
+            views: { $sum: '$views.history.count' },
+            uniqueViews: { $sum: '$views.history.uniqueCount' }
+          }
+        },
+        { $sort: { '_id': 1 } }
       ])
     ]);
+
+    // Calculate engagement rate
+    const total = totalStats[0] || { 
+      totalViews: 0, 
+      uniqueViews: 0, 
+      totalPosts: 0,
+      totalLikes: 0,
+      totalComments: 0
+    };
+
+    const engagementRate = total.totalViews > 0
+      ? (((total.uniqueViews + total.totalLikes + total.totalComments) / 
+          (total.totalViews * 3)) * 100).toFixed(1)
+      : '0';
 
     res.json({
       success: true,
       stats: {
-        total: totalStats[0],
-        devices: deviceStats[0],
+        total,
         timeRange: timeRangeStats,
-        engagementRate: ((totalStats[0]?.uniqueViews || 0) / (totalStats[0]?.totalViews || 1) * 100).toFixed(1)
+        engagementRate
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error fetching analytics' });
+    console.error('Analytics error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching analytics',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -910,5 +993,162 @@ function calculateGrowth(previous, current) {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Math.round(((current - previous) / previous) * 100);
 }
+
+// Create new blog
+router.post('/create', adminAuth, async (req, res) => {
+  try {
+    const { title, content, category, tags, featuredImage, status } = req.body;
+
+    const blog = new Blog({
+      title,
+      content,
+      category,
+      tags,
+      featuredImage,
+      status,
+      author: req.admin._id,
+      stats: {
+        likeCount: 0,
+        commentCount: 0
+      },
+      views: {
+        total: 0,
+        unique: 0,
+        visitors: [],
+        history: []
+      }
+    });
+
+    await blog.save();
+
+    res.status(201).json({
+      success: true,
+      message: status === 'published' ? 'Blog published successfully' : 'Blog saved as draft',
+      blog
+    });
+  } catch (error) {
+    console.error('Blog creation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating blog post'
+    });
+  }
+});
+
+// Update existing blog
+router.put('/update/:id', adminAuth, async (req, res) => {
+  try {
+    const { title, content, category, tags, featuredImage, status } = req.body;
+    
+    const blog = await Blog.findOne({ _id: req.params.id });
+
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: 'Blog not found'
+      });
+    }
+
+    // Update fields
+    blog.title = title;
+    blog.content = content;
+    blog.category = category;
+    blog.tags = tags;
+    blog.featuredImage = featuredImage;
+    blog.status = status;
+    blog.updatedAt = new Date();
+
+    await blog.save();
+
+    res.json({
+      success: true,
+      message: status === 'published' ? 'Blog published successfully' : 'Blog saved as draft',
+      blog
+    });
+  } catch (error) {
+    console.error('Blog update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating blog post'
+    });
+  }
+});
+
+// Get draft blogs for admin
+router.get('/drafts', adminAuth, async (req, res) => {
+  try {
+    const drafts = await Blog.find({ 
+      status: 'draft',
+      author: req.admin._id
+    })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+    res.json({
+      success: true,
+      drafts
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching drafts'
+    });
+  }
+});
+
+// Move these specific routes BEFORE the general '/:id' route
+router.get('/admin/blogs', adminAuth, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10; // Default to 10 if no limit specified
+    
+    const blogs = await Blog.find()
+      .populate('author', 'username')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    res.json({
+      success: true,
+      blogs
+    });
+  } catch (error) {
+    console.error('Error fetching admin blogs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching admin blogs'
+    });
+  }
+});
+
+// Add this new route for fetching single blog for editing
+router.get('/admin/blogs/:id', adminAuth, async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id)
+      .populate('author', 'username')
+      .lean();
+
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: 'Blog not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      blog: {
+        ...blog,
+        tags: blog.tags || [],
+        status: blog.status || 'draft'
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching blog:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching blog'
+    });
+  }
+});
 
 module.exports = router;

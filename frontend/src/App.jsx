@@ -23,6 +23,12 @@ import PublicRoute from './components/PublicRoute';
 import AdminLogin from './pages/Admin/AdminLogin';
 import AdminSignup from './pages/Admin/AdminSignup';
 import Profile from './pages/Profile'
+import { AdminProvider } from './contexts/AdminContext';
+import AllPost from './pages/Admin/AllPost';
+import AllUsers from './pages/Admin/AllUsers'
+import Setting from './pages/Admin/Setting' // Add this import
+import AllComment from './pages/Admin/AllComments'
+import AllComments from './pages/Admin/AllComments';
 
 // Protected Route Components
 const RequireAuth = ({ children }) => {
@@ -128,6 +134,7 @@ const AppLayout = () => {
               <UserProfile />
             </RequireAuth>
           } />
+          
           <Route path="/profile/:userId" element={<Profile />} />
           
           {/* Admin Routes */}
@@ -148,7 +155,12 @@ const AppLayout = () => {
               <Routes>
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="new-blog" element={<NewBlog />} />
+                <Route path="posts" element={<AllPost />} /> {/* Add this line */}
                 <Route path="edit-blog/:id" element={<EditBlog />} />
+                <Route path="users" element={<AllUsers />} />
+                <Route path="settings" element={<Setting />} />
+                <Route path='comments' element={<AllComment/>}/>
+                <Route path="comments" element={<AllComments />} />
               </Routes>
             </AdminRoute>
           } />
@@ -165,7 +177,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppLayout />
+        <AdminProvider>
+          <AppLayout />
+        </AdminProvider>
       </AuthProvider>
     </Router>
   );

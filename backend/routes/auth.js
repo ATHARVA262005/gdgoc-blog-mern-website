@@ -183,13 +183,17 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user._id }, 
+      { 
+        userId: user._id,
+        email: user.email
+      }, 
       process.env.JWT_SECRET, 
-      { expiresIn: '24h' }  // Explicitly set 24 hour expiration
+      { expiresIn: '24h' }
     );
 
     // Login successful
     res.json({
+      success: true,
       token,
       user: {
         id: user._id,
@@ -318,6 +322,29 @@ router.get('/verify-token', auth, async (req, res) => {
     res.status(401).json({
       success: false,
       message: 'Invalid token'
+    });
+  }
+});
+
+// Add refresh token endpoint
+router.post('/refresh-token', auth, async (req, res) => {
+  try {
+    const newToken = jwt.sign(
+      { _id: req.user.userId },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      success: true,
+      token: newToken,
+      expiresIn: 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh token'
     });
   }
 });

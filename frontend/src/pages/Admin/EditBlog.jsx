@@ -72,7 +72,7 @@ const EditBlog = () => {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        const response = await fetch(`/api/blogs/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/blogs/admin/blogs/${id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
           }
@@ -83,27 +83,33 @@ const EditBlog = () => {
         }
   
         const data = await response.json();
-        if (data.success) {
+        if (data.success && data.blog) {
           const blog = data.blog;
-          setTitle(blog.title);
-          setContent(blog.content);
-          setCategory(blog.category);
-          setTags(blog.tags.join(', '));
-          setStatus(blog.status);
-          setImagePreview(blog.featuredImage);
+          setTitle(blog.title || '');
+          setContent(blog.content || '');
+          setCategory(blog.category || '');
+          setTags(Array.isArray(blog.tags) ? blog.tags.join(', ') : '');
+          setStatus(blog.status || 'draft');
+          setImagePreview(blog.featuredImage || '');
+          setFeaturedImage(blog.featuredImage || '');
+        } else {
+          throw new Error(data.message || 'Blog data not found');
         }
-        setIsLoading(false);
       } catch (error) {
         console.error('Error fetching blog:', error);
-        setError('Error fetching blog');
-        // Don't navigate away immediately, show the error first
+        setError(error.message || 'Error fetching blog');
+        // Show error for 3 seconds before redirecting
         setTimeout(() => {
           navigate('/admin/dashboard');
         }, 3000);
+      } finally {
+        setIsLoading(false);
       }
     };
   
-    fetchBlog();
+    if (id) {
+      fetchBlog();
+    }
   }, [id, navigate]);
 
   const handleImageChange = (e) => {
@@ -129,32 +135,42 @@ const EditBlog = () => {
   const handleUpdateStatus = async (newStatus) => {
     setIsSaving(true);
     try {
-      // Include all current blog data along with new status
-      const response = await fetch(`/api/blogs/${id}`, {
+      const blogData = {
+        title,
+        content,
+        category,
+        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        featuredImage: featuredImage,
+        status: newStatus
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/blogs/update/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         },
-        body: JSON.stringify({
-          title,
-          content,
-          category,
-          tags: tags.split(',').map(tag => tag.trim()),
-          featuredImage: imagePreview, // Use current image
-          status: newStatus
-        })
+        body: JSON.stringify(blogData)
       });
 
-      if (!response.ok) throw new Error('Failed to update blog');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to update blog');
+      }
 
       const data = await response.json();
       if (data.success) {
         setStatus(newStatus);
         setShowNotification(true);
+        setTimeout(() => {
+          navigate('/admin/dashboard');
+        }, 2000);
+      } else {
+        throw new Error(data.message || 'Failed to update blog');
       }
     } catch (error) {
-      setError('Error updating blog status');
+      console.error('Update error:', error);
+      setError(error.message);
     } finally {
       setIsSaving(false);
     }

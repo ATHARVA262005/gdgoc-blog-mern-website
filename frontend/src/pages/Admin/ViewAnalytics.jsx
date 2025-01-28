@@ -1,100 +1,39 @@
 import React, { useState } from 'react';
-import { Bar, Line, Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS } from 'chart.js/auto';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Activity, Users, Clock, TrendingUp } from 'lucide-react';
 
 const ViewAnalytics = ({ analytics }) => {
-  const timeRangeData = {
-    labels: analytics.stats?.timeRange?.map(day => day._id) || [],
-    datasets: [
-      {
-        label: 'Total Views',
-        data: analytics.stats?.timeRange?.map(day => day.views) || [],
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-      },
-      {
-        label: 'Unique Views',
-        data: analytics.stats?.timeRange?.map(day => day.uniqueViews) || [],
-        borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: 'rgba(16, 185, 129, 0.5)',
-      }
-    ]
-  };
-
-  const deviceData = {
-    labels: ['Desktop', 'Mobile', 'Tablet'],
-    datasets: [{
-      data: [
-        analytics.stats?.devices?.desktop || 0,
-        analytics.stats?.devices?.mobile || 0,
-        analytics.stats?.devices?.tablet || 0
-      ],
-      backgroundColor: [
-        'rgba(59, 130, 246, 0.6)',
-        'rgba(16, 185, 129, 0.6)',
-        'rgba(249, 115, 22, 0.6)'
-      ]
-    }]
-  };
-
   return (
-    <div className="space-y-8 mt-8">
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Views</p>
-              <p className="text-2xl font-bold">{(analytics.stats?.total?.totalViews || 0).toLocaleString()}</p>
-            </div>
-            <Activity className="text-blue-500" />
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Unique: {(analytics.stats?.total?.uniqueViews || 0).toLocaleString()}
-          </p>
-        </div>
-        {/* Add more stat cards */}
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Views Over Time</h3>
-          <Line 
-            data={timeRangeData}
-            options={{
-              responsive: true,
-              interaction: { intersect: false },
-              scales: {
-                y: { beginAtZero: true }
-              }
-            }}
-          />
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Device Distribution</h3>
-          <Doughnut 
-            data={deviceData}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: { position: 'bottom' }
-              }
-            }}
-          />
+    <div className="mt-8 space-y-8">
+      {/* Views by Post Chart */}
+      <div className="bg-white p-6 rounded-xl shadow-sm">
+        <h3 className="text-lg font-semibold mb-4">Views by Post</h3>
+        <div className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={analytics.viewsByPost}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="title" angle={-45} textAnchor="end" height={100} />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="views" fill="#3b82f6" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Performance Metrics */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4">Performance Metrics</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-500">Engagement Rate</p>
-            <p className="text-2xl font-bold">{analytics.stats?.engagementRate || '0'}%</p>
-          </div>
-          {/* Add more metrics */}
+      {/* Last 30 Days Trend */}
+      <div className="bg-white p-6 rounded-xl shadow-sm">
+        <h3 className="text-lg font-semibold mb-4">Views Trend (Last 30 Days)</h3>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={analytics.last30Days}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="views" stroke="#3b82f6" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

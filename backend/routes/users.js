@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const userOrAdminAuth = require('../middleware/userOrAdminAuth');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
-const Like = require('../models/Like'); // Add this import
-const Blog = require('../models/Blog'); // Add this import
+const Like = require('../models/Like');
+const Blog = require('../models/Blog');
 
 // Get user profile
-router.get('/profile/:userId', auth, async (req, res) => {
+router.get('/profile/:userId', userOrAdminAuth, async (req, res) => {
   try {
     const user = await User.findById(req.params.userId)
       .select('-password -otp');
@@ -42,29 +43,40 @@ router.patch('/:userId/profile-picture', auth, async (req, res) => {
     const { userId } = req.params;
     const { profileImage } = req.body;
 
-    if (!profileImage || !profileImage.url) {
-      return res.status(400).json({ message: 'Invalid profile image data' });
+    // Convert IDs to strings for comparison
+    const requestedUserId = userId.toString();
+    const authenticatedUserId = req.user.userId.toString();
+
+    // Verify user owns this profile
+    if (requestedUserId !== authenticatedUserId) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Not authorized to update this profile' 
+      });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (req.user.userId !== userId) {
-      return res.status(403).json({ message: 'Not authorized to update this profile' });
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
     }
 
     user.profileImage = profileImage;
     await user.save();
 
     res.json({
+      success: true,
       message: 'Profile picture updated successfully',
       profileImage: user.profileImage
     });
   } catch (error) {
     console.error('Profile picture update error:', error);
-    res.status(500).json({ message: 'Failed to update profile picture' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile picture'
+    });
   }
 });
 
@@ -74,23 +86,24 @@ router.patch('/:userId/profile', auth, async (req, res) => {
     const { userId } = req.params;
     const { name, email, bio, socialLinks } = req.body;
 
+    // Convert string IDs to match for comparison
+    const requestedUserId = userId.toString();
+    const authenticatedUserId = req.user.userId.toString();
+
     // Verify user owns this profile
-    if (req.user.userId !== userId) {
-      return res.status(403).json({ message: 'Not authorized to update this profile' });
+    if (requestedUserId !== authenticatedUserId) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Not authorized to update this profile' 
+      });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Handle twitter to x migration
-    if (socialLinks) {
-      // If twitter link is provided and no x link exists, move it to x
-      if (socialLinks.twitter && !socialLinks.x) {
-        socialLinks.x = socialLinks.twitter;
-        delete socialLinks.twitter;
-      }
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
     }
 
     // Update fields if provided
@@ -102,7 +115,7 @@ router.patch('/:userId/profile', auth, async (req, res) => {
     await user.save();
 
     res.json({
-      message: 'Profile updated successfully',
+      success: true,
       user: {
         id: user._id,
         name: user.name,
@@ -115,26 +128,26 @@ router.patch('/:userId/profile', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Profile update error:', error);
-    res.status(500).json({ message: 'Failed to update profile' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to update profile' 
+    });
   }
 });
 
-// Update the get user comments route to include blog comments data
-router.get('/:userId/comments', auth, async (req, res) => {
+// Get user comments
+router.get('/:userId/comments', userOrAdminAuth, async (req, res) => {
   try {
-    const requestingUserId = req.user.userId;
     const user = await User.findById(req.params.userId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Get all blogs containing user's comments
     const blogs = await Blog.find({
       'comments.user': req.params.userId
     }).select('comments title');
 
-    // Format comments with data from blogs
     const formattedComments = user.comments.map(userComment => {
       const blog = blogs.find(b => b._id.toString() === userComment.blog.toString());
       const blogComment = blog?.comments.find(c => c._id.toString() === userComment._id.toString());
@@ -147,7 +160,7 @@ router.get('/:userId/comments', auth, async (req, res) => {
         createdAt: userComment.createdAt,
         likes: blogComment?.likes || [],
         likeCount: blogComment?.likes?.length || 0,
-        isLiked: requestingUserId ? blogComment?.likes?.includes(requestingUserId) : false
+        isLiked: req.user.userId ? blogComment?.likes?.includes(req.user.userId) : false
       };
     });
 
@@ -158,12 +171,11 @@ router.get('/:userId/comments', auth, async (req, res) => {
   }
 });
 
-// Add new endpoint to get user preferences
+// Get user preferences
 router.get('/preferences', auth, async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // Get user's liked blogs with error handling
     const userLikes = await Like.find({ user: userId })
       .populate({
         path: 'blog',
@@ -172,10 +184,8 @@ router.get('/preferences', auth, async (req, res) => {
       })
       .lean();
 
-    // Filter out null blog references
     const validLikes = userLikes.filter(like => like.blog);
 
-    // Calculate preferred categories based on likes
     const categoryCount = {};
     validLikes.forEach(like => {
       if (like.blog?.category) {
@@ -183,12 +193,10 @@ router.get('/preferences', auth, async (req, res) => {
       }
     });
 
-    // Sort categories by frequency
     const preferredCategories = Object.entries(categoryCount)
       .sort(([,a], [,b]) => b - a)
       .map(([category]) => category);
 
-    // Get user's bookmarks with error handling
     const user = await User.findById(userId)
       .populate({
         path: 'bookmarks',
@@ -198,11 +206,10 @@ router.get('/preferences', auth, async (req, res) => {
       .lean();
 
     const bookmarkedCategories = user.bookmarks
-      .filter(blog => blog) // Filter out null references
+      .filter(blog => blog)
       .map(blog => blog.category)
       .filter((category, index, self) => self.indexOf(category) === index);
 
-    // Get recent interactions
     const recentInteractions = validLikes
       .slice(-5)
       .map(like => like.blog?.category)
@@ -225,19 +232,53 @@ router.get('/preferences', auth, async (req, res) => {
   }
 });
 
-// Get total number of users (admin only)
+// Get all users (admin only)
 router.get('/', adminAuth, async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
+    const users = await User.find()
+      .select('-password -otp')
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.json({
       success: true,
-      totalUsers
+      users,
+      totalUsers: users.length
     });
   } catch (error) {
-    console.error('Error fetching total users:', error);
+    console.error('Error fetching users:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching total users'
+      message: 'Error fetching users'
+    });
+  }
+});
+
+// Get recent users (admin only)
+router.get('/recent', adminAuth, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 3;
+    const users = await User.find()
+      .select('username email profileImage createdAt')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    res.json({
+      success: true,
+      users: users.map(user => ({
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        profileImage: user.profileImage,
+        createdAt: user.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching recent users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching recent users'
     });
   }
 });

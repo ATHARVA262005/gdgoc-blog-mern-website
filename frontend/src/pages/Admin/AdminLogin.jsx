@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Loader } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAdmin } from '../../contexts/AdminContext';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { adminLogin } = useAuth();
+  const { adminLogin: authAdminLogin } = useAuth();
+  const { handleLogin: contextHandleLogin } = useAdmin();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -24,12 +26,20 @@ const AdminLogin = () => {
     setError('');
     
     try {
-      const response = await fetch('/api/admin/login', {
+      // Validate inputs
+      if (!formData.email || !formData.password) {
+        throw new Error('Email and password are required');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password
+        })
       });
 
       const data = await response.json();
@@ -38,16 +48,20 @@ const AdminLogin = () => {
         throw new Error(data.message || 'Login failed');
       }
 
-      localStorage.setItem('adminToken', data.token);
-      
-      // Call adminLogin and wait for state to update
-      adminLogin();
-      console.log('Admin logged in successfully');
-      
-      navigate('/admin/dashboard');
+      if (data.success && data.token) {
+        // First update auth context
+        await authAdminLogin(data.token);
+        // Then update admin context
+        await contextHandleLogin(data.token);
+        navigate('/admin/dashboard');
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'Login failed');
+      // Clean up on error
+      localStorage.removeItem('adminToken');
     } finally {
       setLoading(false);
     }

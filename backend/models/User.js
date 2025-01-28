@@ -41,7 +41,8 @@ const userSchema = new mongoose.Schema({
   profileImage: {
     name: String,
     url: String,
-    description: String
+    description: String,
+    publicId: String
   },
   socialLinks: {
     website: String,
@@ -81,6 +82,23 @@ const userSchema = new mongoose.Schema({
         default: Date.now
       }
     }]
+  },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
+  banReason: {
+    type: String,
+    default: null
+  },
+  banDate: {
+    type: Date,
+    default: null
   }
 }, { timestamps: true });
 

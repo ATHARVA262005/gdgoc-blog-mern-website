@@ -24,15 +24,39 @@ const UserProfile = () => {
   const handleProfilePictureChange = async (imageData) => {
     try {
       setIsLoading(true);
-      const updatedProfile = await updateProfilePicture(user.id, imageData);
-      setUserData(prev => ({
-        ...prev,
-        profileImage: updatedProfile.profileImage
-      }));
-      setError(null);
+      
+      // Ensure we have the user ID
+      if (!user?.id) {
+        throw new Error('User ID not found');
+      }
+  
+      const response = await updateProfilePicture(user.id, {
+        url: imageData.url,
+        name: imageData.name,
+        description: imageData.description
+      });
+      
+      if (response.success) {
+        setUserData(prev => ({
+          ...prev,
+          profileImage: response.profileImage
+        }));
+        
+        // Update Auth context user data if needed
+        const updatedUser = JSON.parse(localStorage.getItem('user'));
+        if (updatedUser) {
+          // If you have a method to update user in auth context, call it here
+          // updateAuthUser(updatedUser);
+        }
+        
+        setToastMessage('Profile picture updated successfully!');
+        setShowToast(true);
+        setIsModalOpen(false);
+      }
     } catch (error) {
       console.error('Profile picture update error:', error);
-      setError('Failed to update profile picture');
+      setToastMessage(error.response?.data?.message || 'Failed to update profile picture');
+      setShowToast(true);
     } finally {
       setIsLoading(false);
     }
@@ -41,15 +65,29 @@ const UserProfile = () => {
   const handleProfileEdit = async (updatedData) => {
     try {
       setIsLoading(true);
-      const result = await updateUserProfile(user.id, updatedData);
-      setUserData(result.user);
-      setIsEditModalOpen(false);
-      setError(null);
-      // Show success toast
-      setToastMessage('Profile updated successfully!');
-      setShowToast(true);
+      
+      // Ensure we have the user ID
+      if (!user?.id) {
+        throw new Error('User ID not found');
+      }
+  
+      const response = await updateUserProfile(user.id, {
+        name: updatedData.name,
+        email: updatedData.email,
+        bio: updatedData.bio,
+        socialLinks: updatedData.socialLinks
+      });
+      
+      if (response.success) {
+        setUserData(response.user);
+        setToastMessage('Profile updated successfully!');
+        setShowToast(true);
+        setIsEditModalOpen(false);
+      }
     } catch (error) {
-      setError('Failed to update profile');
+      console.error('Profile update error:', error);
+      setToastMessage(error.response?.data?.message || 'Failed to update profile');
+      setShowToast(true);
     } finally {
       setIsLoading(false);
     }

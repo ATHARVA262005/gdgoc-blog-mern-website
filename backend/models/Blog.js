@@ -8,7 +8,8 @@ const commentSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   likes: [{ 
     type: mongoose.Schema.Types.ObjectId, 
@@ -18,7 +19,11 @@ const commentSchema = new mongoose.Schema({
     type: Number,
     default: 0
   }
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
 const blogSchema = new mongoose.Schema({
   title: {

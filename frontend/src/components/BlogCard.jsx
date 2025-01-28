@@ -1,6 +1,7 @@
 import React from 'react';
 import { ThumbsUp, MessageCircle, Bookmark, BookmarkCheck, Clock } from 'lucide-react';
 import gdgLogo from '/images/profile_administrator.webp';
+import useAdmin from '../hooks/useAdmin';
 
 const stripHtmlTags = (html) => {
   if (!html) return '';
@@ -13,7 +14,7 @@ const BlogCard = ({
     content,
     featuredImage,
     category,
-    author,  // Now this is an object with id and username
+    author,
     createdAt,
     stats = { likeCount: 0, commentCount: 0 }
   },
@@ -23,15 +24,21 @@ const BlogCard = ({
   onBookmark,
   onClick
 }) => {
-  // Destructure with defaults for better error handling
   const { likeCount = 0, commentCount = 0 } = stats;
   const cleanContent = stripHtmlTags(content);
-
+  
+  // Fetch admin details using the author._id
+  const { admin, loading } = useAdmin(author?._id);
+  const authorName = loading ? 'Loading...' : admin?.username || 'GDG Admin';
+  
   return (
+    
     <div 
       onClick={onClick}
       className="bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
     >
+      
+
       {/* Featured Image */}
       <div className="relative aspect-[16/9] overflow-hidden">
         <img 
@@ -64,12 +71,12 @@ const BlogCard = ({
           <div className="flex items-center gap-2 sm:gap-3">
             <img 
               src={gdgLogo}
-              alt={author?.username || 'GDG Admin'} 
+              alt={authorName || 'GDG Admin'} 
               className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-gray-100" 
             />
             <div>
               <p className="font-semibold text-xs sm:text-sm text-gray-900">
-                {author?.username || 'GDG Admin'}
+              {authorName}
               </p>
               <div className="flex items-center text-[10px] sm:text-xs text-gray-500 gap-1 sm:gap-2">
                 <Clock className="w-3 h-3" />

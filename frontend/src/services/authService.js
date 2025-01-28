@@ -233,3 +233,12 @@ export const completeOnboarding = async (userData) => {
     throw error;
   }
 };
+
+export const verifyToken = async () => {
+  try {
+    const response = await axiosInstance.get('/auth/verify-token');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
