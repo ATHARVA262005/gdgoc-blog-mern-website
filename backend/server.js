@@ -126,7 +126,7 @@ app.get('/api/test', (req, res) => {
 // Add sitemap route before other routes
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const hostname = process.env.APP_URL || 'https://yourdomain.com';
+    const hostname = process.env.FRONTEND_URL || 'https://gdgocblog.vercel.app';
     const sitemap = await generateSitemap(hostname);
     
     res.header('Content-Type', 'application/xml');
