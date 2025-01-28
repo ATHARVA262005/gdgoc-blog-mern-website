@@ -270,76 +270,41 @@ router.get('/', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/:id', optionalAuth, async (req, res) => {
+router.get('/:slug', optionalAuth, async (req, res) => {
   try {
     const blog = await Blog.findOne({ 
-      _id: req.params.id,
+      'seo.slug': req.params.slug,
       status: 'published' 
-    })
-    .populate('author', 'name avatar')  // Changed from 'username' to 'name'
-    .populate({
-      path: 'comments.user',
-      select: 'name profileImage',  // Changed from 'username' to 'name'
-      model: 'User'
-    })
-    .lean();  // Add lean() for better performance
+    }).populate('author');
 
     if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message: 'Blog not found'
-      });
+      return res.status(404).json({ success: false, message: 'Blog not found' });
     }
 
-    // Check if user is authenticated and if they liked the blog
-    let isLiked = false;
-    if (req.user) {
-      const like = await Like.findOne({
-        user: req.user.userId,
-        blog: blog._id
-      });
-      isLiked = !!like;
-    }
+    // Update the blog's SEO data
+    blog.seo.metaTags = [
+      ...new Set([
+        ...blog.tags,
+        blog.category,
+        ...blog.content.match(/(?<=#)\w+/g) || [],
+        ...blog.title.split(' ')
+      ].map(tag => tag.toLowerCase()))
+    ];
 
-    // Add current user info to comments if available
-    const comments = blog.comments.map(comment => ({
-      ...comment,
-      user: {
-        ...comment.user,
-        profileImage: comment.user?.profileImage?.url || DEFAULT_PROFILE_IMAGE,
-        _id: comment.user?._id || null
-      }
-    }));
-
-    // Format comments with proper user data and check if user liked each comment
-    const formattedComments = blog.comments.map(comment => {
-      const isCommentLiked = req.user ? comment.likes?.includes(req.user.userId) : false;
-      
-      return {
-        ...comment,
-        user: comment.user ? {
-          _id: comment.user._id,
-          username: comment.user.name,
-          profileImage: comment.user.profileImage?.url || DEFAULT_PROFILE_IMAGE
-        } : null,
-        isLiked: isCommentLiked,
-        likeCount: comment.likes?.length || 0
-      };
-    });
+    await blog.save();
 
     res.json({
       success: true,
       blog: {
-        ...blog,
-        comments: formattedComments,
-        isLiked
+        ...blog.toObject(),
+        seo: {
+          ...blog.seo,
+          fullUrl: `${process.env.APP_URL}/blog/${blog.seo.slug}`
+        }
       }
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching blog'
-    });
+    res.status(500).json({ success: false, message: 'Error fetching blog' });
   }
 });
 

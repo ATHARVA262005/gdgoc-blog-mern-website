@@ -5,6 +5,7 @@ import axios from 'axios';
 import { getBookmarksStatus, toggleBookmark, getLikesStatus, toggleLike } from '../services/blogService';
 import Toast from '../components/Toast';
 import BlogCard from '../components/BlogCard';
+import SEO from '../components/SEO';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -184,155 +185,168 @@ const TreasureBlogs = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {toast.show && (
-        <Toast 
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ show: false, message: '', type: 'success' })}
-        />
-      )}
-      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        {/* Header - Made more compact on mobile */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-6 lg:mb-8">
-          <Library className="text-blue-600" size={24} sm={28} lg={32} />
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Blog Treasure</h1>
-        </div>
-        
-        {/* Search and Filter Section - Improved mobile layout */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 space-y-3 sm:space-y-4">
-          {/* Search and Sort Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div className="relative sm:col-span-3">
-              <input
-                type="text"
-                placeholder="Search blogs..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-4 py-2 pl-10 pr-4 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+    <>
+      <SEO 
+        title={searchQuery ? `Search: ${searchQuery} - Blog Treasure` : "Blog Treasure"}
+        description={
+          searchQuery
+            ? `Search results for "${searchQuery}" - Explore our collection of tech articles and tutorials`
+            : "Explore our complete collection of tech articles, tutorials, and insights from the GDG community"
+        }
+        keywords={`tech blogs, programming tutorials, ${searchQuery || ''}, GDG articles, software development`}
+        image={`${import.meta.env.VITE_APP_URL}/images/blog-treasure-og.jpg`}
+      />
+
+      <div className="min-h-screen bg-gray-50">
+        {toast.show && (
+          <Toast 
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast({ show: false, message: '', type: 'success' })}
+          />
+        )}
+        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Header - Made more compact on mobile */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-6 lg:mb-8">
+            <Library className="text-blue-600" size={24} sm={28} lg={32} />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Blog Treasure</h1>
+          </div>
+          
+          {/* Search and Filter Section - Improved mobile layout */}
+          <div className="mb-4 sm:mb-6 lg:mb-8 space-y-3 sm:space-y-4">
+            {/* Search and Sort Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="relative sm:col-span-3">
+                <input
+                  type="text"
+                  placeholder="Search blogs..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-4 py-2 pl-10 pr-4 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              </div>
+
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 sm:px-4 py-2 pr-8 sm:pr-10 appearance-none rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer text-sm sm:text-base"
+                >
+                  {sortOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ArrowUpDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+              </div>
             </div>
 
-            <div className="relative">
+            {/* Categories - Select on mobile, buttons on larger screens */}
+            <div className="block sm:hidden">
               <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 pr-8 sm:pr-10 appearance-none rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer text-sm sm:text-base"
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-3 py-2 pr-8 appearance-none rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer text-sm"
               >
-                {sortOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                {categories.map(category => (
+                  <option key={category} value={category}>
+                    {category === 'All' ? 'All Categories' : category}
                   </option>
                 ))}
               </select>
-              <ArrowUpDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
             </div>
-          </div>
 
-          {/* Categories - Select on mobile, buttons on larger screens */}
-          <div className="block sm:hidden">
-            <select
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-3 py-2 pr-8 appearance-none rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer text-sm"
-            >
+            <div className="hidden sm:flex sm:flex-wrap gap-2">
               {categories.map(category => (
-                <option key={category} value={category}>
-                  {category === 'All' ? 'All Categories' : category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="hidden sm:flex sm:flex-wrap gap-2">
-            {categories.map(category => (
-              <button
-                key={category}
-                onClick={() => {
-                  setSelectedCategory(category);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-lg transition-colors text-sm
-                  ${selectedCategory === category
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-100'
-                  }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Blog Grid - Adjusted gaps and padding */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-          {currentBlogs.map(blog => (
-            <BlogCard
-              key={blog._id}
-              blog={blog}
-              isLiked={likes[blog._id]}
-              isBookmarked={bookmarks[blog._id]}
-              onLike={(e) => handleLikeToggle(blog._id, e)}
-              onBookmark={(e) => handleBookmarkToggle(blog._id, e)}
-              onClick={() => handleBlogClick(blog._id)}
-            />
-          ))}
-        </div>
-
-        {/* Empty State - Adjusted padding */}
-        {currentBlogs.length === 0 && (
-          <div className="text-center py-6 sm:py-8 lg:py-12">
-            <p className="text-gray-500 text-sm sm:text-base lg:text-lg">
-              No blogs found matching your criteria
-            </p>
-          </div>
-        )}
-
-        {/* Pagination - More compact on mobile */}
-        {filteredBlogs.length > ITEMS_PER_PAGE && (
-          <div className="flex items-center justify-center gap-1 sm:gap-2">
-            <button 
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-1 sm:p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
-            >
-              <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
-            </button>
-            
-            <div className="flex items-center gap-1 sm:gap-2">
-              {Array.from({ length: totalPages }, (_, i) => (
                 <button
-                  key={i + 1}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-6 h-6 sm:w-8 sm:h-8 text-xs sm:text-sm rounded-lg transition-colors
-                    ${currentPage === i + 1 
-                      ? 'bg-blue-600 text-white' 
-                      : 'hover:bg-gray-100'
+                  key={category}
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg transition-colors text-sm
+                    ${selectedCategory === category
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-100'
                     }`}
                 >
-                  {i + 1}
+                  {category}
                 </button>
               ))}
             </div>
-
-            <button 
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="p-1 sm:p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
-            >
-              <ChevronRight size={16} className="sm:w-5 sm:h-5" />
-            </button>
           </div>
-        )}
+
+          {/* Blog Grid - Adjusted gaps and padding */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+            {currentBlogs.map(blog => (
+              <BlogCard
+                key={blog._id}
+                blog={blog}
+                isLiked={likes[blog._id]}
+                isBookmarked={bookmarks[blog._id]}
+                onLike={(e) => handleLikeToggle(blog._id, e)}
+                onBookmark={(e) => handleBookmarkToggle(blog._id, e)}
+                onClick={() => handleBlogClick(blog._id)}
+              />
+            ))}
+          </div>
+
+          {/* Empty State - Adjusted padding */}
+          {currentBlogs.length === 0 && (
+            <div className="text-center py-6 sm:py-8 lg:py-12">
+              <p className="text-gray-500 text-sm sm:text-base lg:text-lg">
+                No blogs found matching your criteria
+              </p>
+            </div>
+          )}
+
+          {/* Pagination - More compact on mobile */}
+          {filteredBlogs.length > ITEMS_PER_PAGE && (
+            <div className="flex items-center justify-center gap-1 sm:gap-2">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1 sm:p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
+              </button>
+              
+              <div className="flex items-center gap-1 sm:gap-2">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-6 h-6 sm:w-8 sm:h-8 text-xs sm:text-sm rounded-lg transition-colors
+                      ${currentPage === i + 1 
+                        ? 'bg-blue-600 text-white' 
+                        : 'hover:bg-gray-100'
+                      }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1 sm:p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronRight size={16} className="sm:w-5 sm:h-5" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const generateSitemap = require('./utils/sitemapGenerator');
 
 // Load environment variables from .env file
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -63,6 +64,22 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// Add canonical URL middleware
+app.use((req, res, next) => {
+  // Skip for API routes
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  // Handle trailing slashes
+  if (req.path.length > 1 && req.path.endsWith('/')) {
+    const canonicalUrl = `${process.env.APP_URL}${req.path.slice(0, -1)}`;
+    return res.redirect(301, canonicalUrl);
+  }
+
+  next();
+});
+
 // Add detailed MongoDB connection logging
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
@@ -106,6 +123,20 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Add sitemap route before other routes
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const hostname = process.env.APP_URL || 'https://yourdomain.com';
+    const sitemap = await generateSitemap(hostname);
+    
+    res.header('Content-Type', 'application/xml');
+    res.send(sitemap);
+  } catch (error) {
+    console.error('Sitemap generation error:', error);
+    res.status(500).send('Error generating sitemap');
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);  
@@ -122,6 +153,12 @@ app.use((err, req, res, next) => {
       message: 'CORS origin not allowed'
     });
   }
+  
+  // Add logging for sitemap errors
+  if (err.message.includes('sitemap')) {
+    console.error('Sitemap error:', err);
+  }
+
   console.error(err.stack);
   res.status(500).json({
     success: false,

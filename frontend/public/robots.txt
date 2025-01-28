@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+Allow: /blog/*
+Allow: /treasure
+Allow: /trending
+Allow: /recent
+
+# Branch structure hints
+Allow: /gdg-pdea/
+Allow: /branch/*
+Allow: /community/*
+
+# Priority pages
+Allow: /featured/*
+Allow: /top-posts/*
+
+Disallow: /admin/*
+Disallow: /login
+Disallow: /signup
+Disallow: /profile/*
+Disallow: /bookmarks
+
+Sitemap: https://yourdomain.com/sitemap.xml
+
+# Rich results testing
+Allow: /structured-data/*
+Allow: /schema/*

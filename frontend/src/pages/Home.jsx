@@ -6,6 +6,7 @@ import BlogCard from '../components/BlogCard';
 import { blogApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getBlogs, getFeaturedBlogs } from '../services/blogService';
+import SEO from '../components/SEO';
 
 const FeaturedPost = ({ post, onClick }) => (
   <div 
@@ -332,67 +333,98 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 ">
-      <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 mb-8 md:mb-0">
-        <SearchBar />
-        
-        <div className="mb-8 sm:mb-12 lg:mb-16">
-          {featuredBlogs.length > 0 ? (
-            <FeaturedCarousel 
-              posts={featuredBlogs} 
-              onPostClick={handleFeaturedPostClick}
+    <>
+      <SEO 
+        title="GDG PDEA Blog"
+        description="Official blog of Google Developer Group PDEA, Pune. Discover technical insights, tutorials, and community updates from PDEA's tech community."
+        keywords="GDG PDEA, Google Developer Group PDEA, PDEA tech blogs, PDEA coding community, Pune developer community"
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          '@id': `${import.meta.env.VITE_APP_URL}/#webpage`,
+          name: 'GDG PDEA Blog',
+          isPartOf: { '@id': `${import.meta.env.VITE_APP_URL}/#website` },
+          about: { '@id': `${import.meta.env.VITE_APP_URL}/#organization` },
+          mainEntity: {
+            '@type': 'ItemList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                item: {
+                  '@type': 'Article',
+                  name: featuredBlogs[0]?.title,
+                  url: `${import.meta.env.VITE_APP_URL}/blog/${featuredBlogs[0]?.slug}`
+                }
+              },
+              // Add more featured blogs...
+            ]
+          }
+        }}
+      />
+      
+      <div className="min-h-screen bg-gray-50 ">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 mb-8 md:mb-0">
+          <SearchBar />
+          
+          <div className="mb-8 sm:mb-12 lg:mb-16">
+            {featuredBlogs.length > 0 ? (
+              <FeaturedCarousel 
+                posts={featuredBlogs} 
+                onPostClick={handleFeaturedPostClick}
+              />
+            ) : (
+              <FeaturedCarousel 
+                posts={trendingBlogs.slice(0, 3)} 
+                onPostClick={handleFeaturedPostClick}
+              />
+            )}
+          </div>
+
+          {/* Recommended Posts Section */}
+          <section className="mb-8 sm:mb-12 lg:mb-16">
+            <SectionTitle 
+              title={getRecommendationTitle()}
+              onViewAll={handleViewAll}
             />
-          ) : (
-            <FeaturedCarousel 
-              posts={trendingBlogs.slice(0, 3)} 
-              onPostClick={handleFeaturedPostClick}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              {recommendedBlogs.map(blog => (
+                <BlogCard
+                  key={blog._id}
+                  blog={blog}
+                  onClick={() => handleBlogClick(blog._id)}
+                  onLike={(e) => handleLike(blog._id, e)}
+                  onBookmark={(e) => handleBookmark(blog._id, e)}
+                  isLiked={blog.isLiked}
+                  isBookmarked={blog.isBookmarked}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* Latest Posts Section */}
+          <section className="mb-8 sm:mb-12 lg:mb-16">
+            <SectionTitle 
+              title="Latest Posts" 
+              onViewAll={handleViewAll}
             />
-          )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              {latestBlogs.map(blog => (
+                <BlogCard
+                  key={blog._id}
+                  blog={blog}
+                  onClick={() => handleBlogClick(blog._id)}
+                  onLike={(e) => handleLike(blog._id, e)}
+                  onBookmark={(e) => handleBookmark(blog._id, e)}
+                  isLiked={blog.isLiked}
+                  isBookmarked={blog.isBookmarked}
+                />
+              ))}
+            </div>
+          </section>
         </div>
-
-        {/* Recommended Posts Section */}
-        <section className="mb-8 sm:mb-12 lg:mb-16">
-          <SectionTitle 
-            title={getRecommendationTitle()}
-            onViewAll={handleViewAll}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {recommendedBlogs.map(blog => (
-              <BlogCard
-                key={blog._id}
-                blog={blog}
-                onClick={() => handleBlogClick(blog._id)}
-                onLike={(e) => handleLike(blog._id, e)}
-                onBookmark={(e) => handleBookmark(blog._id, e)}
-                isLiked={blog.isLiked}
-                isBookmarked={blog.isBookmarked}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Latest Posts Section */}
-        <section className="mb-8 sm:mb-12 lg:mb-16">
-          <SectionTitle 
-            title="Latest Posts" 
-            onViewAll={handleViewAll}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {latestBlogs.map(blog => (
-              <BlogCard
-                key={blog._id}
-                blog={blog}
-                onClick={() => handleBlogClick(blog._id)}
-                onLike={(e) => handleLike(blog._id, e)}
-                onBookmark={(e) => handleBookmark(blog._id, e)}
-                isLiked={blog.isLiked}
-                isBookmarked={blog.isBookmarked}
-              />
-            ))}
-          </div>
-        </section>
       </div>
-    </div>
+    </>
   );
 };
 

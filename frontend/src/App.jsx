@@ -29,6 +29,7 @@ import AllUsers from './pages/Admin/AllUsers'
 import Setting from './pages/Admin/Setting' // Add this import
 import AllComment from './pages/Admin/AllComments'
 import AllComments from './pages/Admin/AllComments';
+import { HelmetProvider } from 'react-helmet-async';
 
 // Protected Route Components
 const RequireAuth = ({ children }) => {
@@ -178,7 +179,9 @@ function App() {
     <Router>
       <AuthProvider>
         <AdminProvider>
-          <AppLayout />
+          <HelmetProvider>
+            <AppLayout />
+          </HelmetProvider>
         </AdminProvider>
       </AuthProvider>
     </Router>
