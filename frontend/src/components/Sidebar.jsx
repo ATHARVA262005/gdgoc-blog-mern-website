@@ -20,7 +20,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useAdmin } from '../contexts/AdminContext';
 
-const LogoUrl = '/svg/gdgoclogo.svg';
+const LogoUrl = new URL('/svg/gdgoclogo.svg', import.meta.url).href;
 
 const Sidebar = () => {
   const location = useLocation();

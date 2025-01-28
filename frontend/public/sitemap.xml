@@ -3,42 +3,42 @@
   
     <url>
       <loc>http://localhost:5173/</loc>
-      <lastmod>2025-01-28T22:35:09.205Z</lastmod>
+      <lastmod>2025-01-28T22:50:19.985Z</lastmod>
       <changefreq>daily</changefreq>
       <priority>1.0</priority>
     </url>
   
     <url>
       <loc>http://localhost:5173/trending</loc>
-      <lastmod>2025-01-28T22:35:09.205Z</lastmod>
+      <lastmod>2025-01-28T22:50:19.985Z</lastmod>
       <changefreq>daily</changefreq>
       <priority>0.8</priority>
     </url>
   
     <url>
       <loc>http://localhost:5173/treasure</loc>
-      <lastmod>2025-01-28T22:35:09.205Z</lastmod>
+      <lastmod>2025-01-28T22:50:19.985Z</lastmod>
       <changefreq>daily</changefreq>
       <priority>0.8</priority>
     </url>
   
     <url>
       <loc>http://localhost:5173/recent</loc>
-      <lastmod>2025-01-28T22:35:09.205Z</lastmod>
+      <lastmod>2025-01-28T22:50:19.985Z</lastmod>
       <changefreq>daily</changefreq>
       <priority>0.8</priority>
     </url>
   
     <url>
       <loc>http://localhost:5173/login</loc>
-      <lastmod>2025-01-28T22:35:09.205Z</lastmod>
+      <lastmod>2025-01-28T22:50:19.985Z</lastmod>
       <changefreq>daily</changefreq>
       <priority>0.8</priority>
     </url>
   
     <url>
       <loc>http://localhost:5173/signup</loc>
-      <lastmod>2025-01-28T22:35:09.205Z</lastmod>
+      <lastmod>2025-01-28T22:50:19.985Z</lastmod>
       <changefreq>daily</changefreq>
       <priority>0.8</priority>
     </url>

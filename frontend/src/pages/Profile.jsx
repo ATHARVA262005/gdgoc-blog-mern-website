@@ -5,6 +5,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import Toast from '../components/Toast';
+import SEO from '../components/SEO';
 
 const DEFAULT_PROFILE_IMAGE = "/images/profile_administrator.webp";
 

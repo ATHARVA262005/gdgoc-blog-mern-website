@@ -1,29 +1,31 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import fs from 'fs';
-import { generateSitemap } from './src/utils/getSitemap';
 
+// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': new URL('./src', import.meta.url).pathname
+    }
+  },
+  base: './',
   server: {
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        ws: true // Enable WebSocket proxying
       }
+    },
+    hmr: {
+      overlay: false, // Disable the error overlay
+      clientPort: 443,
+      host: true
+    },
+    watch: {
+      usePolling: true
     }
-  },
-  build: {
-    rollupOptions: {
-      input: {
-        main: './index.html',
-        sitemap: './public/sitemap.xml'
-      }
-    }
-  },
-  // Add custom command to generate sitemap
-  optimizeDeps: {
-    entries: ['./src/utils/getSitemap.js']
   }
 });

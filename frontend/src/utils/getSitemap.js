@@ -84,3 +84,6 @@ setInterval(() => {
 
 // Generate sitemap on startup
 generateSitemap().catch(console.error);
+
+// Replace filesystem paths with URL paths
+const DEFAULT_PROFILE_IMAGE = new URL('/images/profile_administrator.webp', import.meta.url).href;
