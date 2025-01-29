@@ -1,31 +1,31 @@
 export const profilePictures = [
     {
-    url: "https://placehold.co/400x400/3B82F6/FFFFFF", // Added missing URL for The Explorer
+    url: "/images/user_profiles/The Explorer.png", // Added missing URL for The Explorer
     name: "The Explorer",
     description: "Curious and adventurous reader who loves discovering new topics"
     },
     {
-    url: "https://placehold.co/400x400/EF4444/FFFFFF",
+    url: "/images/user_profiles/The Analyst.png",
     name: "The Analyst",
     description: "Detail-oriented reader who dives deep into technical content"
     },
     {
-    url: "https://placehold.co/400x400/10B981/FFFFFF",
+    url: "/images/user_profiles/The Innovator.png",
     name: "The Innovator",
     description: "Creative thinker who seeks cutting-edge technology trends"
     },
     {
-    url: "https://placehold.co/400x400/6366F1/FFFFFF",
+    url: "/images/user_profiles/The Mentor.png",
     name: "The Mentor",
     description: "Experienced reader who enjoys sharing knowledge"
     },
     {
-    url: "https://placehold.co/400x400/F59E0B/FFFFFF",
+    url: "/images/user_profiles/The Visionary.png",
     name: "The Visionary",
     description: "Forward-thinking reader focused on future technologies"
     },
     {
-    url: "https://placehold.co/400x400/8B5CF6/FFFFFF",
+    url: "/images/user_profiles/The Builder.png",
     name: "The Builder",
     description: "Practical reader who loves hands-on development content"
     }
