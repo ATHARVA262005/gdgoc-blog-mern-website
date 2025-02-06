@@ -77,7 +77,7 @@ const Onboarding = () => {
       const updatedUser = await completeOnboarding({
         name: formData.name.trim(),
         bio: formData.bio.trim(),
-        profileImage: profilePictures[currentImageIndex],
+        profileImage: profileImages[currentImageIndex],
         socialLinks: {
           website: formData.website.trim(),
           github: formData.github.trim(),
