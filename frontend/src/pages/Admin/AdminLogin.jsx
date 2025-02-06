@@ -26,42 +26,31 @@ const AdminLogin = () => {
     setError('');
     
     try {
-      // Validate inputs
-      if (!formData.email || !formData.password) {
-        throw new Error('Email and password are required');
-      }
-
+      // Use environment variable for API URL
       const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password
-        })
+        credentials: 'include', // Add this
+        body: JSON.stringify(formData)
       });
-
+  
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-
-      if (data.success && data.token) {
-        // First update auth context
-        await authAdminLogin(data.token);
-        // Then update admin context
-        await contextHandleLogin(data.token);
-        navigate('/admin/dashboard');
-      } else {
-        throw new Error('Invalid response from server');
-      }
+      
+      if (!response.ok) throw new Error(data.message);
+  
+      // Store token in localStorage
+      localStorage.setItem('adminToken', data.token);
+      
+      // Update contexts
+      await authAdminLogin(data.token);
+      await contextHandleLogin(data.token);
+      
+      navigate('/admin/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'Login failed');
-      // Clean up on error
-      localStorage.removeItem('adminToken');
     } finally {
       setLoading(false);
     }
