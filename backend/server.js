@@ -126,16 +126,13 @@ app.get('/api/test', (req, res) => {
 // Remove or comment out the sitemap route and related code
 // app.get('/sitemap.xml', async (req, res) => { ... });
 
-// Routes - Update the order and paths
+// Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes); // Move this up
-app.use('/api/blogs', blogRoutes);
-app.use('/api/users', userRoutes);
-
-// Add this before the 404 handler
-app.get('*', (req, res) => {
-  res.status(200).sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
+app.use('/api/users', userRoutes);  
+app.use('/api/admin', adminRoutes); // Add this line
+app.use('/api/blogs', blogRoutes); // Add this line
+// Remove the duplicate usersRoute mounting
+// app.use('/api/users', usersRoute); // Mount the users route
 
 // Error handling middleware
 app.use((err, req, res, next) => {

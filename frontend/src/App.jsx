@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter, Route, Routes, useLocation, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Sidebar from './components/Sidebar'
 import BookmarkBlogs from './pages/BookmarkBlogs'
@@ -177,7 +177,7 @@ const AppLayout = () => {
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
         <AdminProvider>
           <HelmetProvider>
@@ -185,7 +185,7 @@ function App() {
           </HelmetProvider>
         </AdminProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   );
 }
 

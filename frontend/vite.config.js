@@ -9,7 +9,7 @@ export default defineConfig({
       '@': new URL('./src', import.meta.url).pathname
     }
   },
-  base: './',
+  base: '/',
   server: {
     proxy: {
       '/api': {
@@ -26,18 +26,6 @@ export default defineConfig({
     },
     watch: {
       usePolling: true
-    },
-    port: 5173
-  },
-  build: {
-    outDir: 'dist',
-    rollupOptions: {
-      output: {
-        manualChunks: undefined
-      }
     }
-  },
-  preview: {
-    port: 5173
   }
 });
