@@ -26,6 +26,18 @@ export default defineConfig({
     },
     watch: {
       usePolling: true
+    },
+    port: 5173
+  },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
     }
+  },
+  preview: {
+    port: 5173
   }
 });
