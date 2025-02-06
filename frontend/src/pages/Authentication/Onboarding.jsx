@@ -3,39 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Globe, Github, Linkedin, Twitter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { completeOnboarding } from '../../services/authService';
 import { useAuth } from '../../contexts/AuthContext';
+import { profileImages } from '../../data/profilePictures.js';
 
-const profileImages = [
-  {
-    url: "https://placehold.co/400x400/3B82F6/FFFFFF",
-    name: "The Explorer",
-    description: "Curious and adventurous reader who loves discovering new topics"
-  },
-  {
-    url: "https://placehold.co/400x400/EF4444/FFFFFF",
-    name: "The Analyst",
-    description: "Detail-oriented reader who dives deep into technical content"
-  },
-  {
-    url: "https://placehold.co/400x400/10B981/FFFFFF",
-    name: "The Innovator",
-    description: "Creative thinker who seeks cutting-edge technology trends"
-  },
-  {
-    url: "https://placehold.co/400x400/6366F1/FFFFFF",
-    name: "The Mentor",
-    description: "Experienced reader who enjoys sharing knowledge"
-  },
-  {
-    url: "https://placehold.co/400x400/F59E0B/FFFFFF",
-    name: "The Visionary",
-    description: "Forward-thinking reader focused on future technologies"
-  },
-  {
-    url: "https://placehold.co/400x400/8B5CF6/FFFFFF",
-    name: "The Builder",
-    description: "Practical reader who loves hands-on development content"
-  }
-];
+
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -107,7 +77,7 @@ const Onboarding = () => {
       const updatedUser = await completeOnboarding({
         name: formData.name.trim(),
         bio: formData.bio.trim(),
-        profileImage: profileImages[currentImageIndex],
+        profileImage: profilePictures[currentImageIndex],
         socialLinks: {
           website: formData.website.trim(),
           github: formData.github.trim(),
