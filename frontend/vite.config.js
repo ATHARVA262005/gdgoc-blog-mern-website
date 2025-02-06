@@ -10,14 +10,27 @@ export default defineConfig({
     }
   },
   base: './',
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+        inlineDynamicImports: true
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  },
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.VITE_API_URL || 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
-        ws: true // Enable WebSocket proxying
+        rewrite: (path) => path.replace(/^\/api/, '')
       }
+    },
+    cors: {
+      origin: true,
+      credentials: true
     },
     hmr: {
       overlay: false, // Disable the error overlay
@@ -26,6 +39,12 @@ export default defineConfig({
     },
     watch: {
       usePolling: true
+    },
+    headers: {
+      'Content-Type': 'application/javascript',
     }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom']
   }
 });
